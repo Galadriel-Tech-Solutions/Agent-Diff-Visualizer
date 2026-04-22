@@ -3,9 +3,9 @@
   "displayName": "Agent Diff Visualizer",
   "description": "Semantic review workspace for large AI-generated git diffs",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "Galadriel-Tech-Solutions",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.116.0"
   },
   "categories": [
     "Other"
@@ -18,7 +18,9 @@
     "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext .ts",
-    "package": "npm run build",
+    "vscode:prepublish": "npm run build",
+    "package": "npx @vscode/vsce package",
+    "publish": "npx @vscode/vsce publish",
     "test": "echo \"No automated tests configured yet\""
   },
   "contributes": {
@@ -70,6 +72,7 @@
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "eslint": "^10.2.1",
+    "@vscode/vsce": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
