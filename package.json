@@ -46,9 +46,24 @@
       }
     }
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "vscode",
+    "extension",
+    "git-diff",
+    "ai",
+    "code-review",
+    "local-first"
+  ],
+  "author": "Yawen Li",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Galadriel-Tech-Solutions/Agent-Diff-Visualizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Galadriel-Tech-Solutions/Agent-Diff-Visualizer/issues"
+  },
+  "homepage": "https://github.com/Galadriel-Tech-Solutions/Agent-Diff-Visualizer#readme",
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.116.0",
@@ -57,9 +72,5 @@
     "eslint": "^10.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://example.invalid/agent-diff-visualizer"
   }
 }
