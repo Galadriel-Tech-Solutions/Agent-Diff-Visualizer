@@ -1,0 +1,65 @@
+{
+  "name": "agent-diff-visualizer",
+  "displayName": "Agent Diff Visualizer",
+  "description": "Semantic review workspace for large AI-generated git diffs",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:adv.openReview"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext .ts",
+    "package": "npm run build",
+    "test": "echo \"No automated tests configured yet\""
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "adv.openReview",
+        "title": "ADV: Open Agent Diff Review"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Diff Visualizer",
+      "properties": {
+        "adv.ollamaModel": {
+          "type": "string",
+          "default": "",
+          "description": "Optional Ollama model name for semantic group labeling. Leave empty to use local heuristics only."
+        },
+        "adv.maxGroups": {
+          "type": "number",
+          "default": 8,
+          "minimum": 3,
+          "maximum": 20,
+          "description": "Maximum number of semantic groups to show in review view."
+        }
+      }
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/vscode": "^1.116.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^10.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://example.invalid/agent-diff-visualizer"
+  }
+}
