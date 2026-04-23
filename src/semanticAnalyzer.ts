@@ -194,20 +194,48 @@ export function buildSummary(groups: SemanticGroup[]): string {
 export function buildTopologyLinks(
   groups: SemanticGroup[],
 ): Array<{ from: string; to: string }> {
-  const links: Array<{ from: string; to: string }> = [];
+  const files = groups.flatMap((g) => g.files);
+  const scored: Array<{ from: string; to: string; score: number }> = [];
 
-  for (const group of groups) {
-    if (group.files.length < 2) {
-      continue;
-    }
+  for (let i = 0; i < files.length; i += 1) {
+    for (let j = i + 1; j < files.length; j += 1) {
+      const a = files[i];
+      const b = files[j];
 
-    const [head, ...tail] = group.files;
-    for (const file of tail.slice(0, 4)) {
-      links.push({ from: head.path, to: file.path });
+      const aDir = a.path.split("/").slice(0, -1).join("/");
+      const bDir = b.path.split("/").slice(0, -1).join("/");
+      const aName = a.path.split("/").at(-1) || a.path;
+      const bName = b.path.split("/").at(-1) || b.path;
+      const aStem = aName.split(".")[0];
+      const bStem = bName.split(".")[0];
+
+      let score = 0;
+      if (aDir && bDir && (aDir.startsWith(bDir) || bDir.startsWith(aDir))) {
+        score += 2;
+      }
+
+      if (aStem && bStem && (aStem.includes(bStem) || bStem.includes(aStem))) {
+        score += 1;
+      }
+
+      if (a.patch.includes(bName) || a.patch.includes(bStem)) {
+        score += 3;
+      }
+
+      if (b.patch.includes(aName) || b.patch.includes(aStem)) {
+        score += 3;
+      }
+
+      if (score > 0) {
+        scored.push({ from: a.path, to: b.path, score });
+      }
     }
   }
 
-  return links;
+  return scored
+    .sort((x, y) => y.score - x.score)
+    .slice(0, 8)
+    .map((item) => ({ from: item.from, to: item.to }));
 }
 
 export function computeGlobalConfidence(

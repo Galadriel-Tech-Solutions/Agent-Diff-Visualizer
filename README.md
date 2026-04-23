@@ -22,6 +22,8 @@ Contributions, issues, and improvement ideas are welcome.
 3. Press `F5` in VS Code to launch extension development host
 4. Run command: `ADV: Open Agent Diff Review`
 
+![Example](/resources/example1.png)
+
 ## Development
 
 1. Install dependencies: `npm install`

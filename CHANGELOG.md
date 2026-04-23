@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 - 2026-04-22
+
+- Expanded agent log discovery to cover more workspace paths and formats.
+- Improved intent parsing for message arrays, JSONL logs, and multi-turn markdown logs.
+- Upgraded topology map linking with path affinity and patch-level reference scoring.
+- Added actionable empty-state guidance for Intent Mapping.
+
 ## 0.1.4 - 2026-04-22
 
 - Improved hardcoded secret detection for `.env`-style files.

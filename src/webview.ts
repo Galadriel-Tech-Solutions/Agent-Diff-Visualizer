@@ -43,7 +43,10 @@ function renderGroup(group: SemanticGroup): string {
 
 function renderIntent(result: AnalysisResult): string {
   if (!result.intent) {
-    return '<p class="muted">No Cline/Aider logs detected in workspace.</p>';
+    return `
+      <p class="muted">No Cline/Aider logs detected in workspace.</p>
+      <p class="muted">Place logs in paths like <strong>.cline/history/*.json</strong>, <strong>.aider.chat.history.md</strong>, or agent log files inside the project.</p>
+    `;
   }
 
   return `
