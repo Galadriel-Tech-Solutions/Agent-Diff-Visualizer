@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 - 2026-04-22
+
+- Improved hardcoded secret detection for `.env`-style files.
+- Added support for unquoted secret values and common token signatures.
+- Adjusted risk scoring input by surfacing previously missed secret flags.
+
 ## 0.1.3 - 2026-04-22
 
 - Updated extension icon with transparent background.
