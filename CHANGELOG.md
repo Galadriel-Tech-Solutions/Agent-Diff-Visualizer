@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 - 2026-04-22
+
+- Updated extension icon with transparent background.
+- Republished Marketplace package to refresh icon assets.
+
 ## 0.1.2 - 2026-04-22
 
 - Normalized Marketplace icon to 512x512 PNG for reliable rendering.
