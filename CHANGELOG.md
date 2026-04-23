@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 - 2026-04-22
+
+- Normalized Marketplace icon to 512x512 PNG for reliable rendering.
+- Republished extension metadata to refresh Marketplace listing.
+
+## 0.1.1 - 2026-04-22
+
+- Added Marketplace extension icon (`resources/icon.png`).
+- Refreshed Marketplace package metadata for republish.
+
 ## 0.1.0 - 2026-04-22
 
 - Initial public release of Agent-Diff-Visualizer.
