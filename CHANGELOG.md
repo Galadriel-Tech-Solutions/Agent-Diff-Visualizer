@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 - 2026-04-25
+
+- Added a visible loading screen when opening ADV on large change sets.
+- Analysis now reports stage-by-stage progress (collect changes, read intent, build groups, compute review signals).
+- Added loading feedback during automatic refreshes to avoid blank panels while recomputing.
+
 ## 0.2.4 - 2026-04-25
 
 - Reduced Topology Map false positives for multi-project dependency upgrades.

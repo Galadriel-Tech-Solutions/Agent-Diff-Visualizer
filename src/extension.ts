@@ -16,7 +16,11 @@ import {
   ReviewStep,
   SemanticGroup,
 } from "./types";
-import { buildWebviewHtml, withDecision } from "./webview";
+import {
+  buildLoadingWebviewHtml,
+  buildWebviewHtml,
+  withDecision,
+} from "./webview";
 
 const DECISION_STATE_KEY = "adv.groupDecisions";
 
@@ -51,10 +55,25 @@ function extractDecisions(
 async function analyzeWorkspace(
   workspaceRoot: string,
   context: vscode.ExtensionContext,
+  onProgress?: (title: string, detail: string) => void,
 ): Promise<AnalysisResult> {
   const config = vscode.workspace.getConfiguration("adv");
+  onProgress?.(
+    "Analyzing Repository",
+    "Collecting committed, staged, working-tree, and untracked changes...",
+  );
   const files = await getDiffFiles(workspaceRoot);
+
+  onProgress?.(
+    "Reading Intent",
+    "Loading latest intent from @adv chat and available agent logs...",
+  );
   const intent = await readLatestIntent(workspaceRoot);
+
+  onProgress?.(
+    "Building Semantic Groups",
+    "Classifying files into review groups and generating labels...",
+  );
   const { groups: rawGroups, ollamaStatus } = await buildSemanticGroups(
     files,
     config,
@@ -63,6 +82,11 @@ async function analyzeWorkspace(
     Record<string, ReviewDecision>
   >(DECISION_STATE_KEY, {});
   const groups = restoreDecisions(rawGroups, storedDecisions);
+
+  onProgress?.(
+    "Computing Review Signals",
+    "Calculating intent drift, topology links, and atomic reversion steps...",
+  );
   const intentDrift = detectIntentDrift(intent, groups);
   const steps = buildReviewSteps(groups);
   const driftPenalty = intentDrift
@@ -170,11 +194,37 @@ export function activate(context: vscode.ExtensionContext): void {
         { enableScripts: true, retainContextWhenHidden: true },
       );
 
-      let currentResult = await analyzeWorkspace(workspaceRoot, context);
+      const setLoadingState = (title: string, detail: string): void => {
+        panel.webview.html = buildLoadingWebviewHtml(
+          panel.webview,
+          title,
+          detail,
+        );
+      };
+
+      setLoadingState(
+        "Opening Agent Diff Visualizer",
+        "Preparing analysis workspace...",
+      );
+
+      let currentResult = await analyzeWorkspace(
+        workspaceRoot,
+        context,
+        setLoadingState,
+      );
       panel.webview.html = buildWebviewHtml(panel.webview, currentResult);
 
       const refresh = async (): Promise<void> => {
-        currentResult = await analyzeWorkspace(workspaceRoot, context);
+        setLoadingState(
+          "Refreshing Analysis",
+          "Change detected. Recomputing semantic groups and risk signals...",
+        );
+
+        currentResult = await analyzeWorkspace(
+          workspaceRoot,
+          context,
+          setLoadingState,
+        );
         panel.webview.html = buildWebviewHtml(panel.webview, currentResult);
       };
 

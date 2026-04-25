@@ -176,6 +176,97 @@ function renderTimeline(result: AnalysisResult): string {
   `;
 }
 
+export function buildLoadingWebviewHtml(
+  webview: vscode.Webview,
+  title: string,
+  detail: string,
+): string {
+  const nonce = Date.now().toString();
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Diff Visualizer</title>
+  <style>
+    :root {
+      --bg: #f3f5ef;
+      --card: #ffffff;
+      --ink: #1d2a22;
+      --muted: #607369;
+      --accent: #0a7f59;
+      --line: #d6ded9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 90% 0%, #dde9df, transparent 40%), var(--bg);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .card {
+      width: min(680px, 100%);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    }
+    .head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid #c6d8cf;
+      border-top-color: var(--accent);
+      animation: spin 900ms linear infinite;
+      flex: 0 0 auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .tip {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <section class="card">
+    <div class="head">
+      <span class="spinner" aria-hidden="true"></span>
+      <h1>${escapeHtml(title)}</h1>
+    </div>
+    <p>${escapeHtml(detail)}</p>
+    <p class="tip">Large change sets can take longer. ADV is still working.</p>
+  </section>
+</body>
+</html>`;
+}
+
 export function buildWebviewHtml(
   webview: vscode.Webview,
   result: AnalysisResult,
