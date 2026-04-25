@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.9 - 2026-04-25
+
+- Updated readme to include how to use for vs code copilot and cursor
+
 ## 0.2.6 - 2026-04-25
 
 - Updated the **categories** and **keywords** in **package.json**

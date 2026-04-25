@@ -64,7 +64,7 @@ Place agent logs in workspace root or subdirectories:
 
 ADV scans these paths on startup to extract prompt and thinking for intent drift detection.
 
-🚀 New: **Copilot Chat** Integration
+#### Copilot & Cursor Integration
 
 Bridging the gap for Copilot Chat and Cursor where structured agent logs are unavailable.
 
@@ -75,16 +75,6 @@ Bridging the gap for Copilot Chat and Cursor where structured agent logs are una
 - Session Management: Use /clear to reset stored context for a fresh architectural review.
 
 - Priority Intelligence: Intent captured via @adv now takes precedence over file-based logs (Cline/Aider) for more accurate Scope Drift Detection.
-
-**Copilot & Cursor Integration (v0.1.7+)**
-
-ADV now monitors VS Code's OutputChannels in real-time for:
-
-- **GitHub Copilot / Copilot Chat**: Captures Goal/Plan/Action patterns from agent execution logs
-- **Cursor Editor / Cursor Agent**: Monitors agent output for intent extraction
-- **Generic Output Panels**: Watches for structured agent output (Goal, Plan, Step, Action patterns)
-
-When these agents execute, ADV automatically captures their working intent from the OutputChannel stream and uses it for drift detection. No configuration needed—monitoring starts automatically on extension activation.
 
 ### Development Setup
 
