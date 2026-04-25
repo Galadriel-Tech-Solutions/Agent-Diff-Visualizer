@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 - 2026-04-25
+
+- Added homepage in **package.json**
+
 ## 0.2.1 - 2026-04-25
 
 - **Refactored diff collection:** Unified approach that merges working-tree, staged, committed (relative to origin), and untracked files into a single review.

@@ -2,7 +2,7 @@
   "name": "agent-diff-visualizer",
   "displayName": "Agent Diff Visualizer",
   "description": "Semantic review workspace for large AI-generated git diffs",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "Galadriel-Tech-Solutions",
   "icon": "resources/icon.png",
   "engines": {
@@ -85,7 +85,7 @@
   "bugs": {
     "url": "https://github.com/Galadriel-Tech-Solutions/Agent-Diff-Visualizer/issues"
   },
-  "homepage": "https://github.com/Galadriel-Tech-Solutions/Agent-Diff-Visualizer#readme",
+  "homepage": "https://galadriel-tech.com/adv",
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.116.0",
