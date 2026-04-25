@@ -448,6 +448,56 @@ export function buildTopologyLinks(groups: SemanticGroup[]): TopologyLink[] {
     }));
 }
 
+function isTestFile(path: string): boolean {
+  return /(test|spec|__tests__)/.test(path.toLowerCase());
+}
+
+function findCorrespondingSourceFile(
+  testFile: string,
+  allFiles: Set<string>,
+): string | null {
+  const testLower = testFile.toLowerCase();
+
+  // Pattern: test/xxx/module_test.py -> xxx/module.py
+  const match1 = testLower.match(/^test[/\\](.+?)_test\.(py|js|ts)$/);
+  if (match1) {
+    const source = match1[1] + "." + match1[2];
+    if (allFiles.has(source)) return source;
+  }
+
+  // Pattern: src/xxx/__tests__/module.test.ts -> src/xxx/module.ts
+  const match2 = testLower.match(
+    /^(.+?)[/\\]__tests__[/\\](.+?)\.test\.(ts|tsx|js|jsx)$/,
+  );
+  if (match2) {
+    const source = match2[1] + "/" + match2[2] + "." + match2[3];
+    if (allFiles.has(source)) return source;
+  }
+
+  // Pattern: tests/components/xxx_spec.js -> components/xxx.js
+  const match3 = testLower.match(/^tests[/\\](.+?)_spec\.(js|ts)$/);
+  if (match3) {
+    const source = match3[1] + "." + match3[2];
+    if (allFiles.has(source)) return source;
+  }
+
+  // Pattern: test_xxx.py -> xxx.py
+  const match4 = testLower.match(/^test_(.+)\.(py|js|ts)$/);
+  if (match4) {
+    const source = match4[1] + "." + match4[2];
+    if (allFiles.has(source)) return source;
+  }
+
+  // Pattern: xxx.test.ts -> xxx.ts
+  const match5 = testLower.match(/^(.+)\.test\.(ts|tsx|js|jsx)$/);
+  if (match5) {
+    const source = match5[1] + "." + match5[2];
+    if (allFiles.has(source)) return source;
+  }
+
+  return null;
+}
+
 function inferPromptScope(prompt: string): {
   allowSecurity: boolean;
   allowDatabase: boolean;
@@ -477,9 +527,29 @@ export function detectIntentDrift(
   const outOfScopeFiles = new Set<string>();
   const evidence: string[] = [];
 
+  // Collect all modified files for reference
+  const allModifiedFiles = new Set<string>();
+  for (const group of groups) {
+    for (const file of group.files) {
+      allModifiedFiles.add(file.path.toLowerCase());
+    }
+  }
+
   for (const group of groups) {
     for (const file of group.files) {
       const filePath = file.path.toLowerCase();
+
+      // Skip test files if their corresponding source file is also modified
+      if (isTestFile(filePath)) {
+        const sourceFile = findCorrespondingSourceFile(
+          filePath,
+          allModifiedFiles,
+        );
+        if (sourceFile) {
+          continue; // This test file is related to a modified source file, so skip it
+        }
+      }
+
       if (
         !scope.allowSecurity &&
         /(auth|security|permission|rbac|oauth)/.test(filePath)

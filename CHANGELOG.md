@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.112 - 2026-04-25
+
+- Added functions to identify test files and find corresponding source files to improve file handling in semantic analysis
+
 ### 0.2.11 - 2026-04-25
 
 - Adjusted showcase image position to README for better visual context
