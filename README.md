@@ -1,5 +1,11 @@
 # Agent-Diff-Visualizer (ADV)
 
+[![Marketplace](https://badgen.net/vs-marketplace/v/Galadriel-Tech-Solutions.agent-diff-visualizer)](https://marketplace.visualstudio.com/items?itemName=Galadriel-Tech-Solutions.agent-diff-visualizer)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE.txt)
+[![Node >=18](https://img.shields.io/badge/node-%3E%3D18-green)](https://nodejs.org)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.96.0-blueviolet?logo=visualstudiocode)](https://code.visualstudio.com)
+[![Ollama](https://img.shields.io/badge/Ollama-optional-lightgrey)](https://ollama.com)
+
 ADV is a local-first VS Code extension that helps review large AI-generated git diffs by grouping changes semantically and surfacing risks.
 
 ## Open Source
