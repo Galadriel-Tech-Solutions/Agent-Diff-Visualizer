@@ -281,6 +281,15 @@ export function buildWebviewHtml(
   <main class="shell">
     <section class="panel">
       <h1>Agent Diff Visualizer <span class="badge">Confidence ${result.confidenceScore}%</span></h1>
+      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+        <label for="adv-scope-select" style="font-weight: 700; font-size: 14px;">Diff Scope:</label>
+        <select id="adv-scope-select" style="border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #f8fbf9; color: var(--ink); cursor: pointer;">
+          <option value="working-tree" ${result.currentScope === "working-tree" ? "selected" : ""}>Working Tree (Uncommitted)</option>
+          <option value="staged" ${result.currentScope === "staged" ? "selected" : ""}>Staged (git add)</option>
+          <option value="unpushed-commits" ${result.currentScope === "unpushed-commits" ? "selected" : ""}>Unpushed Commits</option>
+          <option value="untracked" ${result.currentScope === "untracked" ? "selected" : ""}>Untracked Files</option>
+        </select>
+      </div>
       <p class="muted">${escapeHtml(result.summary)}</p>
       <p class="muted">Generated at ${escapeHtml(result.generatedAt)}</p>
       ${groupsHtml || '<p class="muted">No groups to review.</p>'}
@@ -331,6 +340,7 @@ export function buildWebviewHtml(
     const stepRange = document.getElementById("adv-step-range");
     const stepSelect = document.getElementById("adv-step-select");
     const revertButton = document.getElementById("adv-revert-button");
+    const scopeSelect = document.getElementById("adv-scope-select");
 
     const syncStepChoice = (value) => {
       if (stepRange instanceof HTMLInputElement) {
@@ -340,6 +350,15 @@ export function buildWebviewHtml(
         stepSelect.value = value;
       }
     };
+
+    if (scopeSelect instanceof HTMLSelectElement) {
+      scopeSelect.addEventListener("change", () => {
+        vscode.postMessage({
+          type: "changeDiffScope",
+          payload: { scope: scopeSelect.value }
+        });
+      });
+    }
 
     if (stepRange instanceof HTMLInputElement) {
       stepRange.addEventListener("input", () => syncStepChoice(stepRange.value));

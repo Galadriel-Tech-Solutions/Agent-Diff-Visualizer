@@ -14,6 +14,7 @@ import {
   ReviewDecision,
   ReviewStep,
   SemanticGroup,
+  DiffScope,
 } from "./types";
 import { buildWebviewHtml, withDecision } from "./webview";
 
@@ -50,9 +51,10 @@ function extractDecisions(
 async function analyzeWorkspace(
   workspaceRoot: string,
   context: vscode.ExtensionContext,
+  scope: DiffScope = "working-tree",
 ): Promise<AnalysisResult> {
   const config = vscode.workspace.getConfiguration("adv");
-  const files = await getDiffFiles(workspaceRoot);
+  const files = await getDiffFiles(workspaceRoot, scope);
   const intent = await readLatestIntent(workspaceRoot);
   const rawGroups = await buildSemanticGroups(files, config);
   const storedDecisions = context.workspaceState.get<
@@ -79,6 +81,7 @@ async function analyzeWorkspace(
     intentDrift,
     steps,
     generatedAt: new Date().toLocaleString(),
+    currentScope: scope,
   };
 }
 
@@ -168,8 +171,12 @@ export function activate(context: vscode.ExtensionContext): void {
       let currentResult = await analyzeWorkspace(workspaceRoot, context);
       panel.webview.html = buildWebviewHtml(panel.webview, currentResult);
 
-      const refresh = async (): Promise<void> => {
-        currentResult = await analyzeWorkspace(workspaceRoot, context);
+      const refresh = async (scope?: DiffScope): Promise<void> => {
+        currentResult = await analyzeWorkspace(
+          workspaceRoot,
+          context,
+          scope ?? currentResult.currentScope,
+        );
         panel.webview.html = buildWebviewHtml(panel.webview, currentResult);
       };
 
@@ -207,8 +214,26 @@ export function activate(context: vscode.ExtensionContext): void {
             groupId?: string;
             decision?: ReviewDecision;
             stepId?: string;
+            scope?: DiffScope;
           };
         }) => {
+          if (message.type === "changeDiffScope") {
+            const newScope = message.payload?.scope;
+            if (
+              !newScope ||
+              ![
+                "working-tree",
+                "staged",
+                "unpushed-commits",
+                "untracked",
+              ].includes(newScope)
+            ) {
+              return;
+            }
+            await refresh(newScope);
+            return;
+          }
+
           if (message.type === "setDecision") {
             const groupId = message.payload?.groupId;
             const decision = message.payload?.decision;

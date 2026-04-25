@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 - 2026-04-25
+
+- Added **Diff Scope Selector** to review working-tree, staged, unpushed-commits, and untracked files independently.
+- Extended `getDiffFiles()` to support multiple git diff scopes: `working-tree` (default), `staged`, `unpushed-commits`, `untracked`.
+- Untracked files now appear with complexity metrics alongside staged/committed changes.
+- Scope selection stored in `AnalysisResult` and UI state refreshes immediately on scope change.
+- Each scope has semantically isolated drift detection and atomic reversion tracking.
+
 ## 0.1.9 - 2026-04-25
 
 - Replaced non-functional OutputChannel monitoring with a native Copilot Chat participant `@adv`.

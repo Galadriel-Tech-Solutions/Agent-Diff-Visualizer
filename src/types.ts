@@ -1,4 +1,9 @@
 export type ReviewDecision = "pending" | "approved" | "rejected" | "read";
+export type DiffScope =
+  | "working-tree"
+  | "staged"
+  | "unpushed-commits"
+  | "untracked";
 
 export interface DiffFile {
   path: string;
@@ -61,4 +66,5 @@ export interface AnalysisResult {
   intentDrift: IntentDriftAlert | null;
   steps: ReviewStep[];
   generatedAt: string;
+  currentScope: DiffScope;
 }
