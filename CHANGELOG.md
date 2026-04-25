@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 - 2026-04-25
+
+- **Refactored diff collection:** Unified approach that merges working-tree, staged, committed (relative to origin), and untracked files into a single review.
+- Each file now tagged with `ChangeSource` (working-tree / staged / committed / untracked) to indicate origin.
+- Removed scope selector from UI; all changes analyzed together against current intent.
+- File badges in semantic groups show change source with distinct colors.
+- Intent drift detection applies to entire merged changeset, providing holistic analysis.
+
 ## 0.2.0 - 2026-04-25
 
 - Added **Diff Scope Selector** to review working-tree, staged, unpushed-commits, and untracked files independently.

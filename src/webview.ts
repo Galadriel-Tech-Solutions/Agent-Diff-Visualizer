@@ -15,11 +15,25 @@ function renderGroup(group: SemanticGroup): string {
     ? `<div class="risks">${group.riskFlags.map((r) => `<span class="risk">${escapeHtml(r)}</span>`).join("")}</div>`
     : '<div class="risks"><span class="ok">No risk flags</span></div>';
 
+  const sourceColors: Record<string, string> = {
+    "working-tree": "#fce7e7",
+    staged: "#e7f0fc",
+    committed: "#e7fcf0",
+    untracked: "#f9f0e7",
+  };
+  const sourceLabels: Record<string, string> = {
+    "working-tree": "Working",
+    staged: "Staged",
+    committed: "Committed",
+    untracked: "Untracked",
+  };
+
   const files = group.files
-    .map(
-      (f) =>
-        `<li><strong>${escapeHtml(f.path)}</strong> (+${f.additions} / -${f.deletions})</li>`,
-    )
+    .map((f) => {
+      const sourceLabel = sourceLabels[f.source] || f.source;
+      const sourceBg = sourceColors[f.source] || "#f8fbf9";
+      return `<li><strong>${escapeHtml(f.path)}</strong> (+${f.additions} / -${f.deletions}) <span style="font-size: 11px; padding: 1px 5px; border-radius: 999px; background: ${sourceBg}; color: #555;">${sourceLabel}</span></li>`;
+    })
     .join("");
 
   return `
@@ -281,15 +295,6 @@ export function buildWebviewHtml(
   <main class="shell">
     <section class="panel">
       <h1>Agent Diff Visualizer <span class="badge">Confidence ${result.confidenceScore}%</span></h1>
-      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
-        <label for="adv-scope-select" style="font-weight: 700; font-size: 14px;">Diff Scope:</label>
-        <select id="adv-scope-select" style="border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #f8fbf9; color: var(--ink); cursor: pointer;">
-          <option value="working-tree" ${result.currentScope === "working-tree" ? "selected" : ""}>Working Tree (Uncommitted)</option>
-          <option value="staged" ${result.currentScope === "staged" ? "selected" : ""}>Staged (git add)</option>
-          <option value="unpushed-commits" ${result.currentScope === "unpushed-commits" ? "selected" : ""}>Unpushed Commits</option>
-          <option value="untracked" ${result.currentScope === "untracked" ? "selected" : ""}>Untracked Files</option>
-        </select>
-      </div>
       <p class="muted">${escapeHtml(result.summary)}</p>
       <p class="muted">Generated at ${escapeHtml(result.generatedAt)}</p>
       ${groupsHtml || '<p class="muted">No groups to review.</p>'}
@@ -340,7 +345,6 @@ export function buildWebviewHtml(
     const stepRange = document.getElementById("adv-step-range");
     const stepSelect = document.getElementById("adv-step-select");
     const revertButton = document.getElementById("adv-revert-button");
-    const scopeSelect = document.getElementById("adv-scope-select");
 
     const syncStepChoice = (value) => {
       if (stepRange instanceof HTMLInputElement) {
@@ -350,15 +354,6 @@ export function buildWebviewHtml(
         stepSelect.value = value;
       }
     };
-
-    if (scopeSelect instanceof HTMLSelectElement) {
-      scopeSelect.addEventListener("change", () => {
-        vscode.postMessage({
-          type: "changeDiffScope",
-          payload: { scope: scopeSelect.value }
-        });
-      });
-    }
 
     if (stepRange instanceof HTMLInputElement) {
       stepRange.addEventListener("input", () => syncStepChoice(stepRange.value));

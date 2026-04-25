@@ -1,8 +1,8 @@
 export type ReviewDecision = "pending" | "approved" | "rejected" | "read";
-export type DiffScope =
-  | "working-tree"
+export type ChangeSource =
+  | "committed"
   | "staged"
-  | "unpushed-commits"
+  | "working-tree"
   | "untracked";
 
 export interface DiffFile {
@@ -12,6 +12,7 @@ export interface DiffFile {
   patch: string;
   beforeComplexity: number;
   afterComplexity: number;
+  source: ChangeSource;
 }
 
 export interface SemanticGroup {
@@ -66,5 +67,4 @@ export interface AnalysisResult {
   intentDrift: IntentDriftAlert | null;
   steps: ReviewStep[];
   generatedAt: string;
-  currentScope: DiffScope;
 }

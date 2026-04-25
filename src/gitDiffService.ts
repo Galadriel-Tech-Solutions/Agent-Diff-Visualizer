@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 import { execFile as execFileCallback } from "child_process";
 import { promisify } from "util";
-import { DiffFile, DiffScope } from "./types";
+import { DiffFile, ChangeSource } from "./types";
 
 const execFile = promisify(execFileCallback);
 
@@ -45,55 +45,58 @@ async function readWorkspaceFile(
   }
 }
 
-async function getDiffFilesByScope(
+async function collectDiffsBySource(
   workspaceRoot: string,
-  scope: DiffScope,
-): Promise<{ files: DiffFile[]; shortCommitRef: string }> {
+  source: ChangeSource,
+): Promise<DiffFile[]> {
   let args: string[] = [];
-  let shortCommitRef = "";
+  let beforeRef = "HEAD";
+  let afterRef: "workspace" | string = "workspace";
 
-  if (scope === "working-tree") {
-    args = ["diff", "--numstat"];
-    shortCommitRef = "HEAD";
-  } else if (scope === "staged") {
-    args = ["diff", "--staged", "--numstat"];
-    shortCommitRef = "INDEX";
-  } else if (scope === "unpushed-commits") {
+  if (source === "committed") {
+    // Committed changes: compare current branch HEAD against origin/HEAD
     args = ["diff", "--numstat", "origin/HEAD...HEAD"];
-    shortCommitRef = "UNPUSHED";
-  } else if (scope === "untracked") {
+    beforeRef = "origin/HEAD";
+    afterRef = "HEAD";
+  } else if (source === "staged") {
+    args = ["diff", "--staged", "--numstat"];
+    beforeRef = "HEAD";
+    afterRef = "INDEX";
+  } else if (source === "working-tree") {
+    args = ["diff", "--numstat"];
+    beforeRef = "HEAD";
+    afterRef = "workspace";
+  } else if (source === "untracked") {
     args = ["ls-files", "--others", "--exclude-standard"];
-    shortCommitRef = "UNTRACKED";
+    beforeRef = "";
+    afterRef = "";
   }
 
   const output = await runGitCommand(workspaceRoot, args);
   if (!output) {
-    return { files: [], shortCommitRef };
+    return [];
   }
 
   const lines = output.split(/\r?\n/).filter(Boolean);
   const results: DiffFile[] = [];
 
-  if (scope === "untracked") {
+  if (source === "untracked") {
     // For untracked files, each line is just a file path
     for (const filePath of lines) {
       const after = await readWorkspaceFile(workspaceRoot, filePath);
-      const fileStats = await fs
-        .stat(path.join(workspaceRoot, filePath))
-        .catch(() => null);
-      const additions = fileStats ? after.split("\n").length : 0;
 
       results.push({
         path: filePath,
-        additions,
+        additions: after.split("\n").length,
         deletions: 0,
         patch: `Untracked file: ${filePath}`,
         beforeComplexity: 0,
         afterComplexity: estimateComplexity(after),
+        source: "untracked",
       });
     }
   } else {
-    // For staged/working-tree/unpushed, we have numstat format
+    // For committed/staged/working-tree, we have numstat format
     for (const line of lines) {
       const [additionsRaw, deletionsRaw, ...pathParts] = line.split("\t");
       const filePath = pathParts.join("\t");
@@ -104,13 +107,9 @@ async function getDiffFilesByScope(
       const additions = Number.parseInt(additionsRaw, 10);
       const deletions = Number.parseInt(deletionsRaw, 10);
 
-      // Build patch command based on scope
+      // Build patch command
       let patchArgs: string[] = [];
-      if (scope === "working-tree") {
-        patchArgs = ["diff", "--unified=0", "--", filePath];
-      } else if (scope === "staged") {
-        patchArgs = ["diff", "--staged", "--unified=0", "--", filePath];
-      } else if (scope === "unpushed-commits") {
+      if (source === "committed") {
         patchArgs = [
           "diff",
           "--unified=0",
@@ -118,22 +117,25 @@ async function getDiffFilesByScope(
           "--",
           filePath,
         ];
+      } else if (source === "staged") {
+        patchArgs = ["diff", "--staged", "--unified=0", "--", filePath];
+      } else if (source === "working-tree") {
+        patchArgs = ["diff", "--unified=0", "--", filePath];
       }
 
       const patch = patchArgs.length
         ? await runGitCommand(workspaceRoot, patchArgs)
         : "";
 
-      // For unpushed commits, compare against origin/HEAD instead of HEAD
-      const commitRef = scope === "unpushed-commits" ? "origin/HEAD" : "HEAD";
+      // Fetch before/after content
       const before = await readGitBlob(
         workspaceRoot,
-        `${commitRef}:${filePath}`,
+        `${beforeRef}:${filePath}`,
       );
       const after =
-        scope === "unpushed-commits"
-          ? await readGitBlob(workspaceRoot, `HEAD:${filePath}`)
-          : await readWorkspaceFile(workspaceRoot, filePath);
+        afterRef === "workspace"
+          ? await readWorkspaceFile(workspaceRoot, filePath)
+          : await readGitBlob(workspaceRoot, `${afterRef}:${filePath}`);
 
       results.push({
         path: filePath,
@@ -142,19 +144,38 @@ async function getDiffFilesByScope(
         patch,
         beforeComplexity: estimateComplexity(before),
         afterComplexity: estimateComplexity(after),
+        source,
       });
     }
   }
 
-  return { files: results, shortCommitRef };
+  return results;
 }
 
-export async function getDiffFiles(
-  workspaceRoot: string,
-  scope: DiffScope = "working-tree",
-): Promise<DiffFile[]> {
-  const { files } = await getDiffFilesByScope(workspaceRoot, scope);
-  return files;
+export async function getDiffFiles(workspaceRoot: string): Promise<DiffFile[]> {
+  // Collect from all sources
+  const committed = await collectDiffsBySource(workspaceRoot, "committed");
+  const staged = await collectDiffsBySource(workspaceRoot, "staged");
+  const workingTree = await collectDiffsBySource(workspaceRoot, "working-tree");
+  const untracked = await collectDiffsBySource(workspaceRoot, "untracked");
+
+  // Merge by path, keeping the highest priority source
+  const sourceRank = {
+    "working-tree": 4,
+    staged: 3,
+    committed: 2,
+    untracked: 1,
+  };
+  const fileMap = new Map<string, DiffFile>();
+
+  for (const file of [...committed, ...staged, ...workingTree, ...untracked]) {
+    const existing = fileMap.get(file.path);
+    if (!existing || sourceRank[file.source] > sourceRank[existing.source]) {
+      fileMap.set(file.path, file);
+    }
+  }
+
+  return Array.from(fileMap.values());
 }
 
 export async function restoreFilesToHead(
