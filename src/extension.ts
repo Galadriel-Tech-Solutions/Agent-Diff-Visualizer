@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getDiffFiles, restoreFilesToHead } from "./gitDiffService";
-import { readLatestIntent } from "./logParser";
+import { readLatestIntent, setupOutputChannelMonitoring } from "./logParser";
 import {
   buildSemanticGroups,
   buildReviewSteps,
@@ -97,6 +97,9 @@ function gatherFilesFromStep(steps: ReviewStep[], stepId: string): string[] {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Initialize output channel monitoring for Copilot/Cursor agent capture
+  setupOutputChannelMonitoring();
+
   const command = vscode.commands.registerCommand(
     "adv.openReview",
     async () => {

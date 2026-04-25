@@ -51,11 +51,21 @@ Open VS Code settings and search for `adv.*`:
 
 Place agent logs in workspace root or subdirectories:
 
-- Cline: `.cline/history/*.json`
-- Aider: `.aider.chat.history.md`
-- Generic: `logs/`, `.logs/`, `agent/`, `.agent/`
+- **Cline**: `.cline/history/*.json`
+- **Aider**: `.aider.chat.history.md`
+- **Generic**: `logs/`, `.logs/`, `agent/`, `.agent/` (`.json`, `.jsonl`, `.md`, `.log`, `.txt` files with agent-related names)
 
 ADV scans these paths on startup to extract prompt and thinking for intent drift detection.
+
+**Copilot & Cursor Integration (v0.1.7+)**
+
+ADV now monitors VS Code's OutputChannels in real-time for:
+
+- **GitHub Copilot / Copilot Chat**: Captures Goal/Plan/Action patterns from agent execution logs
+- **Cursor Editor / Cursor Agent**: Monitors agent output for intent extraction
+- **Generic Output Panels**: Watches for structured agent output (Goal, Plan, Step, Action patterns)
+
+When these agents execute, ADV automatically captures their working intent from the OutputChannel stream and uses it for drift detection. No configuration needed—monitoring starts automatically on extension activation.
 
 ### Development Setup
 

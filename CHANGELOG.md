@@ -1,8 +1,15 @@
 # Changelog
 
+## 0.1.8 - 2026-04-25
+
+- Added real-time OutputChannel monitoring for GitHub Copilot, Copilot Chat, Cursor, and generic agent output.
+- Implemented Goal/Plan/Step pattern extraction from VS Code OutputChannels for live intent capture.
+- Extended intent mapping to include Copilot Agent and Cursor Editor without requiring file system logs.
+- In-memory intent buffer now prioritizes live-captured agent context over historical logs.
+
 ## 0.1.7 - 2026-04-25
 
-- Updated the README doc how to use the updated feature in 0.1.6
+- Updated README documentation with comprehensive usage guide for all features in v0.1.6
 
 ## 0.1.6 - 2026-04-25
 
