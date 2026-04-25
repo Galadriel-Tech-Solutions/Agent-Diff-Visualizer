@@ -7,35 +7,73 @@ ADV is a local-first VS Code extension that helps review large AI-generated git 
 This project is open-source under the MIT License.
 Contributions, issues, and improvement ideas are welcome.
 
-## Current MVP
+## Features
 
-- Semantic grouping for uncommitted changes
-- TL;DR summary with confidence score
-- Intent-to-code panel using latest Cline/Aider logs when available
-- High-risk flagging for secrets, auth/security/db schema paths, and complexity spikes
-- Group-level approve/reject state stored in workspace
+### Core Capabilities
+
+- **Semantic Task Clustering**: Groups changed files into logical tasks (auth refactor, UI update, database schema) with task-oriented labels and file impact metrics
+- **Confidence Scoring**: Aggregates risk signals (secrets, complexity, drift, architecture smell) into a single trust metric
+- **Intent Mapping**: Extracts user prompt and agent reasoning from local Cline/Aider logs for review context
+- **Risk Highlighting**: Detects hardcoded secrets, sensitive path changes, and complexity spikes
+
+### Advanced Features (v0.1.6+)
+
+- **Intent Drift Detection**: Compares initial prompt scope against changed files; alerts when code extends beyond declared intent (e.g., "fix UI" but changes auth config). Shows severity level, evidence, and affected files
+- **Dependency Topology Map**: Visualizes file relationships and flags architectural risks:
+  - **Impact edges** (solid): Downstream consumers affected by changes
+  - **Smell edges** (dashed): Potential circular dependencies or cross-layer violations
+- **Atomic Reversion Timeline**: Step-by-step scrubber to review agent execution flow and rollback from any step onward (keeps early steps, discards later changes)
+- **Review Status Tracking**: Mark tasks as pending/approved/rejected/**read** with persistent state per workspace
 
 ## Usage
 
-1. Install dependencies: `npm install`
-2. Build: `npm run build`
-3. Press `F5` in VS Code to launch extension development host
-4. Run command: `ADV: Open Agent Diff Review`
+### Quick Start (VS Code Extension)
+
+1. Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Galadriel-Tech-Solutions.agent-diff-visualizer)
+2. Open a workspace with uncommitted git changes
+3. Run command: **ADV: Open Agent Diff Review** (Ctrl/Cmd+Shift+P, type "ADV")
+4. Review panel opens in sidebar:
+   - Left: Semantic groups with approve/reject/read buttons
+   - Right: Intent mapping, topology map, and reversion timeline
+
+### Configuration
+
+Open VS Code settings and search for `adv.*`:
+
+```json
+{
+  "adv.maxGroups": 8,
+  "adv.ollamaModel": "llama2" // Optional: enable local LLM labeling via Ollama
+}
+```
+
+### Intent Log Discovery
+
+Place agent logs in workspace root or subdirectories:
+
+- Cline: `.cline/history/*.json`
+- Aider: `.aider.chat.history.md`
+- Generic: `logs/`, `.logs/`, `agent/`, `.agent/`
+
+ADV scans these paths on startup to extract prompt and thinking for intent drift detection.
+
+### Development Setup
+
+1. Clone and `npm install`
+2. Run `npm run watch` (TypeScript compiler in watch mode)
+3. Press `F5` to launch extension dev host
+4. `npm run lint` before commit
 
 ![Example](/resources/example1.png)
 
-## Development
-
-1. Install dependencies: `npm install`
-2. Start compiler in watch mode: `npm run watch`
-3. Start extension host with `F5` in VS Code
-4. Run lint checks before commit: `npm run lint`
-
 ## Roadmap
 
-- Phase 1: Semantic grouping + review UI
-- Phase 2: Deeper Cline/Aider intent mapping
-- Phase 3: Test log and sandbox signal integration
+- ✅ Phase 1: Semantic grouping + review UI (v0.1.0)
+- ✅ Phase 2: Deeper Cline/Aider intent mapping (v0.1.5)
+- ✅ Phase 3: Intent drift + topology map + atomic reversion (v0.1.6)
+- Phase 4: Interactive topology visualization (interactive DAG/network graph)
+- Phase 5: Multi-step diff preview and step-level edit capability
+- Phase 6: Integration with code snapshot services for rollback preview
 
 ## Contributing
 
@@ -50,7 +88,13 @@ If you discover a security issue, please report it through SECURITY.md.
 
 GitHub Actions runs build and lint automatically on pushes to `main` and on pull requests.
 
-## Notes
+## Design Philosophy
 
-- All analysis runs locally.
-- Optional semantic labeling with Ollama can be enabled via `adv.ollamaModel` setting.
+- **Local-first**: All analysis runs in your VS Code process; no telemetry, no cloud calls (except Ollama if configured)
+- **Heuristic + LLM**: Semantic grouping uses rule-based classification by default; optional Ollama integration for smarter task labeling
+- **Low overhead**: Workspace state persisted locally; no external storage
+- **Degradation-friendly**: Missing intent logs? Missing Ollama? Extensions gracefully degrade with sensible defaults
+
+## Acknowledgments
+
+Built to support autonomous agent workflows (Cline, Aider, OpenDevin, Copilot Agent mode). Inspired by the need for human-in-the-loop validation in agentic code generation.

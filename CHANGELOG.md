@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7 - 2026-04-25
+
+- Updated the README doc how to use the updated feature in 0.1.6
+
 ## 0.1.6 - 2026-04-25
 
 - Added task-oriented semantic clustering labels and review status "Mark as Read".
