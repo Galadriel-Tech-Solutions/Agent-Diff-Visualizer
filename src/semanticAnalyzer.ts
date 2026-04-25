@@ -1,11 +1,19 @@
 import * as vscode from "vscode";
-import { DiffFile, SemanticGroup } from "./types";
+import {
+  AgentIntent,
+  DiffFile,
+  IntentDriftAlert,
+  ReviewStep,
+  SemanticGroup,
+  TopologyLink,
+} from "./types";
 import { collectRiskFlags, computeConfidenceScore } from "./riskAnalyzer";
 
 interface GroupBucket {
   key: string;
   defaultLabel: string;
   reason: string;
+  icon: string;
   files: DiffFile[];
 }
 
@@ -16,48 +24,54 @@ function inferBucket(file: DiffFile): Omit<GroupBucket, "files"> {
   if (/(auth|oauth|jwt|permission|rbac|security)/.test(p + patch)) {
     return {
       key: "security",
-      defaultLabel: "Security and access-control updates",
+      defaultLabel: "Task: Refactor auth and access-control logic",
       reason: "Auth/security related paths or tokens detected",
+      icon: "📦",
     };
   }
 
   if (/(schema|migration|database|sql|prisma|typeorm)/.test(p + patch)) {
     return {
       key: "data",
-      defaultLabel: "Database schema and data layer changes",
+      defaultLabel: "Task: Update data schema and persistence flow",
       reason: "Data-model or migration keywords found",
+      icon: "🧱",
     };
   }
 
   if (/(test|spec|__tests__)/.test(p)) {
     return {
       key: "tests",
-      defaultLabel: "Test coverage updates",
+      defaultLabel: "Task: Extend test coverage",
       reason: "Test files modified",
+      icon: "✅",
     };
   }
 
   if (/(ui|view|component|css|scss|tsx|jsx|dashboard)/.test(p + patch)) {
     return {
       key: "ui",
-      defaultLabel: "UI and presentation layer adjustments",
+      defaultLabel: "Task: Unify UI behavior and presentation",
       reason: "Frontend/view oriented changes",
+      icon: "💅",
     };
   }
 
   if (/(refactor|cleanup|rename|extract|reorganize)/.test(patch)) {
     return {
       key: "refactor",
-      defaultLabel: "Refactoring and code cleanup",
+      defaultLabel: "Task: Refactor code structure",
       reason: "Refactoring terms detected in patch",
+      icon: "📦",
     };
   }
 
   const folder = p.split("/")[0] || "misc";
   return {
     key: `scope:${folder}`,
-    defaultLabel: `Scoped updates in ${folder}`,
+    defaultLabel: `Task: Scoped updates in ${folder}`,
     reason: "Grouped by top-level module scope",
+    icon: "🧩",
   };
 }
 
@@ -160,7 +174,7 @@ export async function buildSemanticGroups(
 
     groups.push({
       id: `group-${index + 1}`,
-      label,
+      label: `${bucket.icon} ${label}`,
       reason: bucket.reason,
       files: bucket.files,
       totalAdditions,
@@ -191,11 +205,9 @@ export function buildSummary(groups: SemanticGroup[]): string {
   );
 }
 
-export function buildTopologyLinks(
-  groups: SemanticGroup[],
-): Array<{ from: string; to: string }> {
+export function buildTopologyLinks(groups: SemanticGroup[]): TopologyLink[] {
   const files = groups.flatMap((g) => g.files);
-  const scored: Array<{ from: string; to: string; score: number }> = [];
+  const scored: Array<TopologyLink & { score: number }> = [];
 
   for (let i = 0; i < files.length; i += 1) {
     for (let j = i + 1; j < files.length; j += 1) {
@@ -208,6 +220,8 @@ export function buildTopologyLinks(
       const bName = b.path.split("/").at(-1) || b.path;
       const aStem = aName.split(".")[0];
       const bStem = bName.split(".")[0];
+      const aLower = a.path.toLowerCase();
+      const bLower = b.path.toLowerCase();
 
       let score = 0;
       if (aDir && bDir && (aDir.startsWith(bDir) || bDir.startsWith(aDir))) {
@@ -226,8 +240,36 @@ export function buildTopologyLinks(
         score += 3;
       }
 
+      const mutualReference =
+        (a.patch.includes(bName) || a.patch.includes(bStem)) &&
+        (b.patch.includes(aName) || b.patch.includes(aStem));
+      const serviceUiViolation =
+        (aLower.includes("service") && /(component|view|ui)/.test(bLower)) ||
+        (bLower.includes("service") && /(component|view|ui)/.test(aLower));
+
+      if (mutualReference || serviceUiViolation) {
+        score += 3;
+      }
+
       if (score > 0) {
-        scored.push({ from: a.path, to: b.path, score });
+        const relation: TopologyLink["relation"] =
+          mutualReference || serviceUiViolation ? "smell" : "impact";
+        const style: TopologyLink["style"] =
+          relation === "smell" ? "dashed" : "solid";
+        const reason = mutualReference
+          ? "Potential circular dependency"
+          : serviceUiViolation
+            ? "Potential layer boundary violation"
+            : "Downstream consumer impact";
+
+        scored.push({
+          from: a.path,
+          to: b.path,
+          score,
+          relation,
+          reason,
+          style,
+        });
       }
     }
   }
@@ -235,7 +277,99 @@ export function buildTopologyLinks(
   return scored
     .sort((x, y) => y.score - x.score)
     .slice(0, 8)
-    .map((item) => ({ from: item.from, to: item.to }));
+    .map((item) => ({
+      from: item.from,
+      to: item.to,
+      relation: item.relation,
+      reason: item.reason,
+      style: item.style,
+    }));
+}
+
+function inferPromptScope(prompt: string): {
+  allowSecurity: boolean;
+  allowDatabase: boolean;
+  allowUi: boolean;
+} {
+  const normalized = prompt.toLowerCase();
+  return {
+    allowSecurity: /(auth|security|oauth|permission|rbac|token)/.test(
+      normalized,
+    ),
+    allowDatabase: /(db|database|schema|migration|sql|prisma|typeorm)/.test(
+      normalized,
+    ),
+    allowUi: /(ui|component|style|css|layout|view|frontend)/.test(normalized),
+  };
+}
+
+export function detectIntentDrift(
+  intent: AgentIntent | null,
+  groups: SemanticGroup[],
+): IntentDriftAlert | null {
+  if (!intent) {
+    return null;
+  }
+
+  const scope = inferPromptScope(intent.prompt);
+  const outOfScopeFiles = new Set<string>();
+  const evidence: string[] = [];
+
+  for (const group of groups) {
+    for (const file of group.files) {
+      const filePath = file.path.toLowerCase();
+      if (
+        !scope.allowSecurity &&
+        /(auth|security|permission|rbac|oauth)/.test(filePath)
+      ) {
+        outOfScopeFiles.add(file.path);
+      }
+      if (
+        !scope.allowDatabase &&
+        /(schema|migration|database|sql|prisma|typeorm)/.test(filePath)
+      ) {
+        outOfScopeFiles.add(file.path);
+      }
+      if (
+        !scope.allowUi &&
+        /(component|ui|view|css|scss|tsx|jsx)/.test(filePath)
+      ) {
+        outOfScopeFiles.add(file.path);
+      }
+    }
+  }
+
+  if (!outOfScopeFiles.size) {
+    return null;
+  }
+
+  evidence.push(`Prompt: ${intent.prompt.slice(0, 180)}`);
+  evidence.push(
+    `Out-of-scope files: ${Array.from(outOfScopeFiles).slice(0, 4).join(", ")}`,
+  );
+
+  return {
+    severity: outOfScopeFiles.size >= 2 ? "high" : "medium",
+    title: "Intent Drift Warning",
+    message:
+      "Detected changes outside prompt scope. Review sensitive or unrelated files before approving.",
+    evidence,
+    affectedFiles: Array.from(outOfScopeFiles),
+  };
+}
+
+export function buildReviewSteps(groups: SemanticGroup[]): ReviewStep[] {
+  return groups.map((group, index) => {
+    const riskCount = group.riskFlags.length;
+    return {
+      id: `step-${index + 1}`,
+      title: `Step ${index + 1}`,
+      description: group.label,
+      groupIds: [group.id],
+      filePaths: group.files.map((f) => f.path),
+      riskCount,
+    };
+  });
 }
 
 export function computeGlobalConfidence(

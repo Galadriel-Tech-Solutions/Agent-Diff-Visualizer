@@ -34,10 +34,31 @@ function renderGroup(group: SemanticGroup): string {
       <div class="actions">
         <button data-action="approve" data-group-id="${group.id}" ${group.decision === "approved" ? "disabled" : ""}>Approve</button>
         <button data-action="reject" data-group-id="${group.id}" ${group.decision === "rejected" ? "disabled" : ""}>Reject</button>
+        <button data-action="read" data-group-id="${group.id}" ${group.decision === "read" ? "disabled" : ""}>Mark Read</button>
         <button data-action="reset" data-group-id="${group.id}" ${group.decision === "pending" ? "disabled" : ""}>Reset</button>
         <span class="decision ${group.decision}">${group.decision.toUpperCase()}</span>
       </div>
     </section>
+  `;
+}
+
+function renderIntentDrift(result: AnalysisResult): string {
+  if (!result.intentDrift) {
+    return '<p class="muted">No intent drift warning for current diff scope.</p>';
+  }
+
+  const levelClass =
+    result.intentDrift.severity === "high" ? "drift-high" : "drift-medium";
+  const evidenceHtml = result.intentDrift.evidence
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+
+  return `
+    <div class="drift ${levelClass}">
+      <h4>${escapeHtml(result.intentDrift.title)}</h4>
+      <p>${escapeHtml(result.intentDrift.message)}</p>
+      <ul>${evidenceHtml}</ul>
+    </div>
   `;
 }
 
@@ -75,11 +96,36 @@ function renderTopology(result: AnalysisResult): string {
   const links = result.topologyLinks
     .map(
       (l) =>
-        `<li>${escapeHtml(l.from)} <span class=\"arrow\">→</span> ${escapeHtml(l.to)}</li>`,
+        `<li class="${l.style}">${escapeHtml(l.from)} <span class=\"arrow\">→</span> ${escapeHtml(l.to)} <span class="topology-reason">(${escapeHtml(l.reason)})</span></li>`,
     )
     .join("");
 
   return `<ul class=\"topology\">${links}</ul>`;
+}
+
+function renderTimeline(result: AnalysisResult): string {
+  if (!result.steps.length) {
+    return '<p class="muted">No step timeline available for current analysis.</p>';
+  }
+
+  const max = result.steps.length;
+  const defaultValue = max;
+  const options = result.steps
+    .map(
+      (step, idx) =>
+        `<option value="${idx + 1}">${escapeHtml(step.title)}: ${escapeHtml(step.description)}</option>`,
+    )
+    .join("");
+
+  return `
+    <div class="timeline-wrap">
+      <label for="adv-step-range" class="muted">Scrub Agent Steps</label>
+      <input id="adv-step-range" type="range" min="1" max="${max}" value="${defaultValue}" />
+      <select id="adv-step-select">${options}</select>
+      <button id="adv-revert-button" data-action="revert-step">Revert From Selected Step</button>
+      <p class="muted">Keep early steps and cut from selected step onward.</p>
+    </div>
+  `;
 }
 
 export function buildWebviewHtml(
@@ -175,7 +221,26 @@ export function buildWebviewHtml(
     }
     .decision.approved { color: var(--accent); border-color: #97ceb8; }
     .decision.rejected { color: var(--danger); border-color: #efb0b0; }
+    .decision.read { color: #265da8; border-color: #a5c3ea; }
     .decision.pending { color: var(--warn); border-color: #e8c48f; }
+    .drift {
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid var(--line);
+    }
+    .drift h4 { margin-bottom: 6px; }
+    .drift ul { margin: 0; padding-left: 16px; }
+    .drift-high {
+      background: #fff0f0;
+      border-color: #efb0b0;
+      color: #7d1e1e;
+    }
+    .drift-medium {
+      background: #fff7ea;
+      border-color: #ebcb92;
+      color: #8e5b0a;
+    }
     .intent-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
     pre {
       margin: 0;
@@ -192,7 +257,21 @@ export function buildWebviewHtml(
     }
     .topology { margin: 0; padding-left: 18px; }
     .topology li { margin: 6px 0; }
+    .topology li.dashed { border-left: 2px dashed #c57f2a; padding-left: 6px; }
+    .topology-reason { color: var(--muted); font-size: 12px; }
     .arrow { color: var(--accent); font-weight: 700; }
+    .timeline-wrap {
+      display: grid;
+      gap: 8px;
+    }
+    #adv-step-range { width: 100%; }
+    #adv-step-select, #adv-revert-button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: #f8fbf9;
+      color: var(--ink);
+    }
     @media (max-width: 980px) {
       .shell { grid-template-columns: 1fr; }
     }
@@ -210,11 +289,16 @@ export function buildWebviewHtml(
     <aside>
       <section class="panel">
         <h2>Intent Mapping</h2>
+        ${renderIntentDrift(result)}
         ${renderIntent(result)}
       </section>
       <section class="panel" style="margin-top: 16px;">
         <h2>Topology Map</h2>
         ${renderTopology(result)}
+      </section>
+      <section class="panel" style="margin-top: 16px;">
+        <h2>Atomic Reversion</h2>
+        ${renderTimeline(result)}
       </section>
     </aside>
   </main>
@@ -236,12 +320,48 @@ export function buildWebviewHtml(
       let decision = "pending";
       if (action === "approve") decision = "approved";
       if (action === "reject") decision = "rejected";
+      if (action === "read") decision = "read";
 
       vscode.postMessage({
         type: "setDecision",
         payload: { groupId, decision }
       });
     });
+
+    const stepRange = document.getElementById("adv-step-range");
+    const stepSelect = document.getElementById("adv-step-select");
+    const revertButton = document.getElementById("adv-revert-button");
+
+    const syncStepChoice = (value) => {
+      if (stepRange instanceof HTMLInputElement) {
+        stepRange.value = value;
+      }
+      if (stepSelect instanceof HTMLSelectElement) {
+        stepSelect.value = value;
+      }
+    };
+
+    if (stepRange instanceof HTMLInputElement) {
+      stepRange.addEventListener("input", () => syncStepChoice(stepRange.value));
+    }
+
+    if (stepSelect instanceof HTMLSelectElement) {
+      stepSelect.addEventListener("change", () => syncStepChoice(stepSelect.value));
+    }
+
+    if (revertButton instanceof HTMLButtonElement) {
+      revertButton.addEventListener("click", () => {
+        if (!(stepSelect instanceof HTMLSelectElement)) {
+          return;
+        }
+
+        const stepId = "step-" + stepSelect.value;
+        vscode.postMessage({
+          type: "revertFromStep",
+          payload: { stepId }
+        });
+      });
+    }
   </script>
 </body>
 </html>`;

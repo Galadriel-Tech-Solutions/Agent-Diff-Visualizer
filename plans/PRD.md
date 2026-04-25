@@ -198,3 +198,157 @@ Dependency impact map with architecture smell annotations.
 
 Phase 4:
 Atomic reversion timeline with partial rollback preview/apply.
+
+11. Implementation Backlog (Epic -> Story -> Acceptance)
+    11.1 Epic A: Semantic Task Clustering
+    Goal:
+    Turn file-level diffs into intent-level review tasks.
+
+Story A1:
+As a reviewer, I can see changed files clustered into named logic tasks.
+
+Acceptance:
+For a diff touching >= 20 files, system produces <= 10 clusters with labels, file count, and churn.
+
+Each file belongs to exactly one primary cluster.
+
+Story A2:
+As a reviewer, I can mark a cluster as read/approved/rejected without opening individual files.
+
+Acceptance:
+Cluster decision state persists across panel refresh and reopen.
+
+Decision actions update summary counters in under 200ms on local machine.
+
+Implementation hints:
+Analyzer: semanticAnalyzer.ts
+
+State and orchestration: extension.ts
+
+UI: webview.ts
+
+11.2 Epic B: Intent Mapping and Drift Detection
+Goal:
+Detect when code changes exceed prompt scope and explain why.
+
+Story B1:
+As a reviewer, I can see latest prompt/thinking evidence from local agent logs.
+
+Acceptance:
+Parser supports JSON, JSONL, Markdown, and generic log text in workspace.
+
+When no intent source exists, UI shows actionable guidance for supported locations.
+
+Story B2:
+As a reviewer, I get a high-severity warning when sensitive out-of-scope files are modified.
+
+Acceptance:
+Given prompt intent category and changed file categories, drift rule engine emits severity and reason.
+
+Drift warning lists at least one prompt-side evidence and one code-side evidence.
+
+Implementation hints:
+Log ingestion and parsing: logParser.ts
+
+Drift rule evaluation: riskAnalyzer.ts + semanticAnalyzer.ts
+
+Warning rendering: webview.ts
+
+11.3 Epic C: Dependency Impact Map
+Goal:
+Visualize downstream effects and architectural smell edges.
+
+Story C1:
+As a reviewer, I can see how a changed module/function impacts downstream consumers.
+
+Acceptance:
+Topology view renders ranked impact links with source and target.
+
+Links are derived from path affinity and patch-level symbol references.
+
+Story C2:
+As an architect, I can spot potential circular references and layer violations.
+
+Acceptance:
+Rule engine tags risky edges with smell type.
+
+UI differentiates normal edges vs warning edges.
+
+Implementation hints:
+Graph scoring: semanticAnalyzer.ts
+
+Smell rules: new module smellRules.ts (recommended)
+
+Graph UI: webview.ts
+
+11.4 Epic D: Atomic Reversion Timeline
+Goal:
+Allow reviewers to keep good early steps and drop bad later steps.
+
+Story D1:
+As a reviewer, I can scrub an execution timeline and preview diff state per step.
+
+Acceptance:
+Timeline displays ordered steps with timestamp, summary, and impacted files.
+
+Selecting a step updates preview without losing current review decisions.
+
+Story D2:
+As a reviewer, I can apply partial rollback (keep up to Step N, remove Step N+1..end).
+
+Acceptance:
+Before apply, system shows rollback preview and conflict warnings.
+
+Rollback operation is reversible via git history or generated backup patch.
+
+Implementation hints:
+Step extraction: new module stepTimeline.ts
+
+Rollback applicator: new module atomicReversion.ts
+
+UI controls: webview.ts + extension.ts command handlers
+
+11.5 Epic E: Risk, Confidence, and Explainability
+Goal:
+Provide trustworthy risk scoring that drives review focus.
+
+Story E1:
+As a reviewer, I can see confidence score changes tied to explicit reasons.
+
+Acceptance:
+Score breakdown includes tests ratio, risk flags, drift severity, and topology smells.
+
+Each risk flag is traceable to one or more concrete files/lines.
+
+Story E2:
+As a reviewer, I can trust secret detection for quoted and unquoted env styles.
+
+Acceptance:
+Detection covers .env/.env.dist/.env.local patterns and common token signatures.
+
+Placeholder values are ignored to reduce false positives.
+
+Implementation hints:
+Risk engine: riskAnalyzer.ts
+
+Score aggregation: semanticAnalyzer.ts
+
+11.6 Suggested Delivery Plan (Engineering)
+Milestone M1 (1-2 weeks):
+Epic A + baseline E2
+
+Milestone M2 (1-2 weeks):
+Epic B + score explainability from E1
+
+Milestone M3 (2-3 weeks):
+Epic C with warning edges
+
+Milestone M4 (2-3 weeks):
+Epic D timeline and partial rollback apply
+
+Definition of Done (all milestones):
+TypeScript build and lint pass.
+
+Updated changelog and release notes.
+
+Manual validation scenario documented for each story.

@@ -1,4 +1,4 @@
-export type ReviewDecision = "pending" | "approved" | "rejected";
+export type ReviewDecision = "pending" | "approved" | "rejected" | "read";
 
 export interface DiffFile {
   path: string;
@@ -27,11 +27,38 @@ export interface AgentIntent {
   timestamp?: string;
 }
 
+export interface IntentDriftAlert {
+  severity: "high" | "medium";
+  title: string;
+  message: string;
+  evidence: string[];
+  affectedFiles: string[];
+}
+
+export interface TopologyLink {
+  from: string;
+  to: string;
+  relation: "impact" | "smell";
+  reason: string;
+  style: "solid" | "dashed";
+}
+
+export interface ReviewStep {
+  id: string;
+  title: string;
+  description: string;
+  groupIds: string[];
+  filePaths: string[];
+  riskCount: number;
+}
+
 export interface AnalysisResult {
   groups: SemanticGroup[];
   summary: string;
   confidenceScore: number;
-  topologyLinks: Array<{ from: string; to: string }>;
+  topologyLinks: TopologyLink[];
   intent: AgentIntent | null;
+  intentDrift: IntentDriftAlert | null;
+  steps: ReviewStep[];
   generatedAt: string;
 }

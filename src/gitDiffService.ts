@@ -88,3 +88,26 @@ export async function getDiffFiles(workspaceRoot: string): Promise<DiffFile[]> {
 
   return results;
 }
+
+export async function restoreFilesToHead(
+  workspaceRoot: string,
+  filePaths: string[],
+): Promise<void> {
+  const uniquePaths = Array.from(new Set(filePaths)).filter(Boolean);
+  if (!uniquePaths.length) {
+    return;
+  }
+
+  await execFile(
+    "git",
+    [
+      "restore",
+      "--source=HEAD",
+      "--staged",
+      "--worktree",
+      "--",
+      ...uniquePaths,
+    ],
+    { cwd: workspaceRoot, maxBuffer: 1024 * 1024 * 8 },
+  );
+}
