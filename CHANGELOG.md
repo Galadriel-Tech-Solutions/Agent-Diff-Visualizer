@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6 - 2026-04-25
+
+- Updated the **categories** and **keywords** in **package.json**
+
 ## 0.2.5 - 2026-04-25
 
 - Added a visible loading screen when opening ADV on large change sets.
