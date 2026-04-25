@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 - 2026-04-25
+
+- Added explicit Ollama observability in the review UI.
+- Each semantic group now shows whether its label came from Ollama or the built-in heuristic logic.
+- Added an Ollama status card with fallback counts and the last connection error.
+- Added the `ADV: Test Ollama Connection` command for one-click connectivity checks.
+
 ## 0.2.2 - 2026-04-25
 
 - Added homepage in **package.json**

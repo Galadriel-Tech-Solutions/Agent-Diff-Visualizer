@@ -32,6 +32,7 @@ Contributions, issues, and improvement ideas are welcome.
 1. Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Galadriel-Tech-Solutions.agent-diff-visualizer)
 2. Open a workspace with uncommitted git changes
 3. Run command: **ADV: Open Agent Diff Review** (Ctrl/Cmd+Shift+P, type "ADV")
+   ![open adv in view](/resources/view.png)
 4. Review panel opens in sidebar:
    - Left: Semantic groups with approve/reject/read buttons
    - Right: Intent mapping, topology map, and reversion timeline

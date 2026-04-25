@@ -4,6 +4,7 @@ export type ChangeSource =
   | "staged"
   | "working-tree"
   | "untracked";
+export type LabelSource = "heuristic" | "ollama";
 
 export interface DiffFile {
   path: string;
@@ -24,6 +25,16 @@ export interface SemanticGroup {
   totalDeletions: number;
   riskFlags: string[];
   decision: ReviewDecision;
+  labelSource: LabelSource;
+}
+
+export interface OllamaStatus {
+  configuredModel: string;
+  enabled: boolean;
+  reachable: boolean;
+  usedForGroups: number;
+  fallbackGroups: number;
+  lastError?: string;
 }
 
 export interface AgentIntent {
@@ -67,4 +78,5 @@ export interface AnalysisResult {
   intentDrift: IntentDriftAlert | null;
   steps: ReviewStep[];
   generatedAt: string;
+  ollamaStatus: OllamaStatus;
 }

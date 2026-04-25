@@ -36,12 +36,18 @@ function renderGroup(group: SemanticGroup): string {
     })
     .join("");
 
+  const labelSourceBadge =
+    group.labelSource === "ollama"
+      ? '<span class="meta-badge meta-ollama">Label: Ollama</span>'
+      : '<span class="meta-badge meta-heuristic">Label: Heuristic</span>';
+
   return `
     <section class="group" data-group-id="${group.id}">
       <div class="group-header">
         <h3>${escapeHtml(group.label)}</h3>
         <div class="stats">+${group.totalAdditions} / -${group.totalDeletions}</div>
       </div>
+      <div class="meta-row">${labelSourceBadge}</div>
       <p class="reason">${escapeHtml(group.reason)}</p>
       ${riskBlock}
       <ul class="files">${files}</ul>
@@ -53,6 +59,34 @@ function renderGroup(group: SemanticGroup): string {
         <span class="decision ${group.decision}">${group.decision.toUpperCase()}</span>
       </div>
     </section>
+  `;
+}
+
+function renderOllamaStatus(result: AnalysisResult): string {
+  const status = result.ollamaStatus;
+  if (!status.enabled) {
+    return `
+      <div class="ollama-status">
+        <h2>Ollama Status</h2>
+        <p class="muted">No Ollama model configured. Semantic labels are using built-in heuristics.</p>
+      </div>
+    `;
+  }
+
+  const toneClass = status.reachable ? "ollama-ok" : "ollama-warn";
+  const message = status.reachable
+    ? `Model ${escapeHtml(status.configuredModel)} is active. ${status.usedForGroups} group(s) used Ollama, ${status.fallbackGroups} fell back to heuristics.`
+    : `Model ${escapeHtml(status.configuredModel)} is configured, but ADV fell back to heuristics.`;
+  const detail = status.lastError
+    ? `<p class="muted">Last error: ${escapeHtml(status.lastError)}</p>`
+    : "";
+
+  return `
+    <div class="ollama-status ${toneClass}">
+      <h2>Ollama Status</h2>
+      <p>${message}</p>
+      ${detail}
+    </div>
   `;
 }
 
@@ -237,6 +271,25 @@ export function buildWebviewHtml(
     .decision.rejected { color: var(--danger); border-color: #efb0b0; }
     .decision.read { color: #265da8; border-color: #a5c3ea; }
     .decision.pending { color: var(--warn); border-color: #e8c48f; }
+    .meta-row { margin-bottom: 8px; }
+    .meta-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+    }
+    .meta-ollama {
+      background: #e8f7ef;
+      color: #0b6c4b;
+      border-color: #97ceb8;
+    }
+    .meta-heuristic {
+      background: #f7f1e8;
+      color: #8e5b0a;
+      border-color: #ebcb92;
+    }
     .drift {
       border-radius: 10px;
       padding: 10px;
@@ -278,6 +331,20 @@ export function buildWebviewHtml(
       display: grid;
       gap: 8px;
     }
+    .ollama-status {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 16px;
+    }
+    .ollama-ok {
+      background: #eef8f1;
+      border-color: #97ceb8;
+    }
+    .ollama-warn {
+      background: #fff7ea;
+      border-color: #ebcb92;
+    }
     #adv-step-range { width: 100%; }
     #adv-step-select, #adv-revert-button {
       border: 1px solid var(--line);
@@ -302,6 +369,7 @@ export function buildWebviewHtml(
 
     <aside>
       <section class="panel">
+        ${renderOllamaStatus(result)}
         <h2>Intent Mapping</h2>
         ${renderIntentDrift(result)}
         ${renderIntent(result)}

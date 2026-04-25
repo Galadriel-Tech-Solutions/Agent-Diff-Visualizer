@@ -2,7 +2,7 @@
   "name": "agent-diff-visualizer",
   "displayName": "Agent Diff Visualizer",
   "description": "Semantic review workspace for large AI-generated git diffs",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "Galadriel-Tech-Solutions",
   "icon": "resources/icon.png",
   "engines": {
@@ -30,6 +30,10 @@
       {
         "command": "adv.openReview",
         "title": "ADV: Open Agent Diff Review"
+      },
+      {
+        "command": "adv.testOllamaConnection",
+        "title": "ADV: Test Ollama Connection"
       }
     ],
     "chatParticipants": [

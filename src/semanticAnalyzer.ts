@@ -3,6 +3,7 @@ import {
   AgentIntent,
   DiffFile,
   IntentDriftAlert,
+  OllamaStatus,
   ReviewStep,
   SemanticGroup,
   TopologyLink,
@@ -78,7 +79,7 @@ function inferBucket(file: DiffFile): Omit<GroupBucket, "files"> {
 async function suggestGroupLabelWithOllama(
   model: string,
   files: DiffFile[],
-): Promise<string | null> {
+): Promise<{ label: string | null; error?: string }> {
   try {
     const payload = {
       model,
@@ -100,20 +101,97 @@ async function suggestGroupLabelWithOllama(
     });
 
     if (!response.ok) {
-      return null;
+      return {
+        label: null,
+        error: `HTTP ${response.status} from Ollama generate API`,
+      };
     }
 
     const data = (await response.json()) as { response?: string };
-    return data.response?.trim() || null;
-  } catch {
-    return null;
+    return { label: data.response?.trim() || null };
+  } catch (error) {
+    return {
+      label: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function testOllamaConnection(
+  model: string,
+): Promise<{ ok: boolean; message: string }> {
+  const trimmedModel = model.trim();
+  if (!trimmedModel) {
+    return { ok: false, message: "No Ollama model configured." };
+  }
+
+  try {
+    const tagsResponse = await fetch("http://127.0.0.1:11434/api/tags");
+    if (!tagsResponse.ok) {
+      return {
+        ok: false,
+        message: `Ollama tags API returned HTTP ${tagsResponse.status}.`,
+      };
+    }
+
+    const tagsData = (await tagsResponse.json()) as {
+      models?: Array<{ name?: string }>;
+    };
+    const knownModels = (tagsData.models ?? [])
+      .map((entry) => entry.name?.trim())
+      .filter((name): name is string => Boolean(name));
+
+    if (!knownModels.includes(trimmedModel)) {
+      return {
+        ok: false,
+        message:
+          `Model \"${trimmedModel}\" is not installed in Ollama.` +
+          (knownModels.length
+            ? ` Available models: ${knownModels.join(", ")}`
+            : " No local models were reported."),
+      };
+    }
+
+    const generateResponse = await fetch(
+      "http://127.0.0.1:11434/api/generate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: trimmedModel,
+          stream: false,
+          prompt: "Reply with exactly: ADV test ok",
+        }),
+      },
+    );
+
+    if (!generateResponse.ok) {
+      return {
+        ok: false,
+        message: `Ollama generate API returned HTTP ${generateResponse.status}.`,
+      };
+    }
+
+    const generateData = (await generateResponse.json()) as {
+      response?: string;
+    };
+    const responseText = generateData.response?.trim() || "(empty response)";
+    return {
+      ok: true,
+      message: `Connected to Ollama model \"${trimmedModel}\". Sample response: ${responseText}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
 export async function buildSemanticGroups(
   files: DiffFile[],
   config: vscode.WorkspaceConfiguration,
-): Promise<SemanticGroup[]> {
+): Promise<{ groups: SemanticGroup[]; ollamaStatus: OllamaStatus }> {
   const buckets = new Map<string, GroupBucket>();
 
   for (const file of files) {
@@ -149,6 +227,13 @@ export async function buildSemanticGroups(
 
   const ollamaModel = config.get<string>("ollamaModel", "").trim();
   const groups: SemanticGroup[] = [];
+  const ollamaStatus: OllamaStatus = {
+    configuredModel: ollamaModel,
+    enabled: Boolean(ollamaModel),
+    reachable: !ollamaModel,
+    usedForGroups: 0,
+    fallbackGroups: 0,
+  };
 
   for (const [index, bucket] of sortedBuckets.entries()) {
     const totalAdditions = bucket.files.reduce(
@@ -162,13 +247,23 @@ export async function buildSemanticGroups(
     const riskFlags = collectRiskFlags(bucket.files);
 
     let label = bucket.defaultLabel;
+    let labelSource: SemanticGroup["labelSource"] = "heuristic";
     if (ollamaModel) {
-      const llmLabel = await suggestGroupLabelWithOllama(
+      const ollamaResult = await suggestGroupLabelWithOllama(
         ollamaModel,
         bucket.files,
       );
-      if (llmLabel) {
-        label = llmLabel;
+      if (ollamaResult.label) {
+        label = ollamaResult.label;
+        labelSource = "ollama";
+        ollamaStatus.reachable = true;
+        ollamaStatus.usedForGroups += 1;
+      } else {
+        ollamaStatus.fallbackGroups += 1;
+        if (ollamaResult.error) {
+          ollamaStatus.reachable = false;
+          ollamaStatus.lastError = ollamaResult.error;
+        }
       }
     }
 
@@ -181,10 +276,11 @@ export async function buildSemanticGroups(
       totalDeletions,
       riskFlags,
       decision: "pending",
+      labelSource,
     });
   }
 
-  return groups;
+  return { groups, ollamaStatus };
 }
 
 export function buildSummary(groups: SemanticGroup[]): string {

@@ -8,6 +8,7 @@ import {
   buildTopologyLinks,
   computeGlobalConfidence,
   detectIntentDrift,
+  testOllamaConnection,
 } from "./semanticAnalyzer";
 import {
   AnalysisResult,
@@ -54,7 +55,10 @@ async function analyzeWorkspace(
   const config = vscode.workspace.getConfiguration("adv");
   const files = await getDiffFiles(workspaceRoot);
   const intent = await readLatestIntent(workspaceRoot);
-  const rawGroups = await buildSemanticGroups(files, config);
+  const { groups: rawGroups, ollamaStatus } = await buildSemanticGroups(
+    files,
+    config,
+  );
   const storedDecisions = context.workspaceState.get<
     Record<string, ReviewDecision>
   >(DECISION_STATE_KEY, {});
@@ -79,6 +83,7 @@ async function analyzeWorkspace(
     intentDrift,
     steps,
     generatedAt: new Date().toLocaleString(),
+    ollamaStatus,
   };
 }
 
@@ -271,7 +276,25 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
-  context.subscriptions.push(command);
+  const testOllamaCommand = vscode.commands.registerCommand(
+    "adv.testOllamaConnection",
+    async () => {
+      const model = vscode.workspace
+        .getConfiguration("adv")
+        .get<string>("ollamaModel", "")
+        .trim();
+
+      const result = await testOllamaConnection(model);
+      if (result.ok) {
+        vscode.window.showInformationMessage(result.message);
+        return;
+      }
+
+      vscode.window.showWarningMessage(result.message);
+    },
+  );
+
+  context.subscriptions.push(command, testOllamaCommand);
 }
 
 export function deactivate(): void {
