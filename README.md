@@ -64,6 +64,18 @@ Place agent logs in workspace root or subdirectories:
 
 ADV scans these paths on startup to extract prompt and thinking for intent drift detection.
 
+🚀 New: **Copilot Chat** Integration
+
+Bridging the gap for Copilot Chat and Cursor where structured agent logs are unavailable.
+
+- Direct Intent Setting: Type @adv <intent> in Copilot Chat to manually define your coding mission.
+
+- Quick Review: Use the /review command to launch the visual diff panel instantly after setting your intent.
+
+- Session Management: Use /clear to reset stored context for a fresh architectural review.
+
+- Priority Intelligence: Intent captured via @adv now takes precedence over file-based logs (Cline/Aider) for more accurate Scope Drift Detection.
+
 **Copilot & Cursor Integration (v0.1.7+)**
 
 ADV now monitors VS Code's OutputChannels in real-time for:
