@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 - 2026-04-25
+
+- Added task-oriented semantic clustering labels and review status "Mark as Read".
+- Added Intent Drift detection with severity/evidence and confidence penalty integration.
+- Upgraded topology map to include impact vs smell relations, reasons, and visual styles.
+- Added atomic reversion timeline with step scrubber and "revert from selected step" action.
+- Wired backend git restore helper to rollback staged/worktree changes for selected steps.
+
 ## 0.1.5 - 2026-04-22
 
 - Expanded agent log discovery to cover more workspace paths and formats.
