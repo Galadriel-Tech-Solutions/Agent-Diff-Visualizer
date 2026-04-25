@@ -2,7 +2,7 @@
   "name": "agent-diff-visualizer",
   "displayName": "Agent Diff Visualizer",
   "description": "Semantic review workspace for large AI-generated git diffs",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "Galadriel-Tech-Solutions",
   "icon": "resources/icon.png",
   "engines": {
@@ -12,7 +12,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:adv.openReview"
+    "onCommand:adv.openReview",
+    "onChatParticipant:adv"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -29,6 +30,24 @@
       {
         "command": "adv.openReview",
         "title": "ADV: Open Agent Diff Review"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "adv",
+        "name": "adv",
+        "description": "Describe your coding intent so Agent Diff Visualizer can map it against your uncommitted changes",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "review",
+            "description": "Open the diff review panel using the current intent"
+          },
+          {
+            "name": "clear",
+            "description": "Clear the stored intent"
+          }
+        ]
       }
     ],
     "configuration": {

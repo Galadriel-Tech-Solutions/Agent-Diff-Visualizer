@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9 - 2026-04-25
+
+- Replaced non-functional OutputChannel monitoring with a native Copilot Chat participant `@adv`.
+- Users can now type `@adv <intent>` in Copilot Chat to set their coding intent directly.
+- `/review` command opens the diff review panel immediately after setting intent.
+- `/clear` command resets the stored intent for a fresh review session.
+- Intent captured via `@adv` is prioritised over file-based logs (Cline/Aider/generic) for drift detection.
+
 ## 0.1.8 - 2026-04-25
 
 - Added real-time OutputChannel monitoring for GitHub Copilot, Copilot Chat, Cursor, and generic agent output.

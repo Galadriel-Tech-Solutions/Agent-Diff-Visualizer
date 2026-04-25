@@ -1,11 +1,9 @@
 import { Dirent, promises as fs } from "fs";
 import * as path from "path";
-import * as vscode from "vscode";
 import { AgentIntent } from "./types";
 
-// In-memory buffer for captured Copilot/Cursor intent
-let capturedOutputChannelIntent: AgentIntent | null = null;
-let outputChannelListener: vscode.Disposable | null = null;
+// In-memory buffer for intent captured via the @adv chat participant
+let capturedChatIntent: AgentIntent | null = null;
 
 async function findLatestFile(candidates: string[]): Promise<string | null> {
   let latest: { path: string; mtime: number } | null = null;
@@ -224,9 +222,9 @@ function parseAiderMarkdown(raw: string, source: string): AgentIntent | null {
 export async function readLatestIntent(
   workspaceRoot: string,
 ): Promise<AgentIntent | null> {
-  // Priority 1: Return in-memory captured intent from Copilot/Cursor OutputChannel
-  if (capturedOutputChannelIntent) {
-    return capturedOutputChannelIntent;
+  // Priority 1: Return intent captured via @adv Copilot Chat participant
+  if (capturedChatIntent) {
+    return capturedChatIntent;
   }
 
   const clineCandidates = await collectClineCandidates(workspaceRoot);
@@ -255,109 +253,17 @@ export async function readLatestIntent(
   }
 }
 
-export function setupOutputChannelMonitoring(): void {
-  if (outputChannelListener) {
-    outputChannelListener.dispose();
-  }
-
-  const knownChannelNames = [
-    "GitHub Copilot",
-    "Copilot",
-    "Copilot Chat",
-    "Copilot Output",
-    "Cursor",
-    "Cursor Editor",
-    "Cursor Agent",
-    "Agent",
-  ];
-
-  const disposables: vscode.Disposable[] = [];
-
-  // Listen for workspace text document changes which might capture agent output
-  disposables.push(
-    vscode.workspace.onDidChangeTextDocument((event) => {
-      const doc = event.document;
-
-      // Check if document is from a known agent source
-      if (
-        doc.uri.scheme === "output" ||
-        knownChannelNames.some(
-          (name) =>
-            doc.uri.path.toLowerCase().includes(name.toLowerCase()) ||
-            doc.fileName.toLowerCase().includes(name.toLowerCase()),
-        )
-      ) {
-        extractIntentFromText(doc.getText(), `Output: ${doc.fileName}`);
-      }
-    }),
-  );
-
-  // Intercept known agent commands to capture context
-  disposables.push(
-    vscode.commands.registerCommand("adv.captureAgentContext", async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        return;
-      }
-
-      const selection = editor.selection;
-      const selectedText = editor.document.getText(selection);
-      const prompt = selectedText || "(no selection)";
-      const thinking =
-        editor.document.getText().slice(0, 500) || "(document context)";
-
-      capturedOutputChannelIntent = {
-        prompt,
-        thinking,
-        source: `VS Code Selection @ ${new Date().toISOString()}`,
-        timestamp: new Date().toISOString(),
-      };
-    }),
-  );
-
-  // Try to monitor Copilot-related execution events
-  disposables.push(
-    vscode.debug.onDidChangeActiveDebugSession(() => {
-      const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.languageId) {
-        const hint = `Debugging in ${editor.document.languageId}`;
-        if (capturedOutputChannelIntent) {
-          capturedOutputChannelIntent.thinking += `\n[Debug session: ${hint}]`;
-        }
-      }
-    }),
-  );
-
-  outputChannelListener = vscode.Disposable.from(...disposables);
+/** Called by the @adv chat participant handler when the user sends a prompt. */
+export function setChatIntent(intent: AgentIntent): void {
+  capturedChatIntent = intent;
 }
 
-export function clearCapturedIntent(): void {
-  capturedOutputChannelIntent = null;
+/** Clears the stored chat intent (used by the /clear command). */
+export function clearChatIntent(): void {
+  capturedChatIntent = null;
 }
 
-function extractIntentFromText(text: string, source: string): void {
-  // Extract Goal/Plan patterns from agent output
-  const goalMatch = text.match(
-    /(?:Goal|Objective|Task|Plan):\s*(.*?)(?=\n(?:Goal|Objective|Task|Plan|Step):|$)/is,
-  );
-  const planMatch = text.match(
-    /(?:Plan|Strategy|Approach):\s*([\s\S]*?)(?=\n(?:Goal|Objective|Task|Plan|Step|Action):|$)/i,
-  );
-  const actionMatch = text.match(
-    /(?:Action|Step|Operation):\s*(.*?)(?=\n(?:Goal|Objective|Task|Plan|Step|Action):|$)/is,
-  );
-
-  const goal = goalMatch?.[1]?.trim() || "";
-  const plan = planMatch?.[1]?.trim() || "";
-  const action = actionMatch?.[1]?.trim() || "";
-
-  // Only capture if we found structured data
-  if (goal || plan || action) {
-    capturedOutputChannelIntent = {
-      prompt: goal || action || "(agent goal)",
-      thinking: plan || `Captured from ${source}`,
-      source,
-      timestamp: new Date().toISOString(),
-    };
-  }
+/** Returns true if an intent has been captured via chat. */
+export function hasChatIntent(): boolean {
+  return capturedChatIntent !== null;
 }

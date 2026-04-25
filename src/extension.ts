@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getDiffFiles, restoreFilesToHead } from "./gitDiffService";
-import { readLatestIntent, setupOutputChannelMonitoring } from "./logParser";
+import { readLatestIntent, setChatIntent, clearChatIntent } from "./logParser";
 import {
   buildSemanticGroups,
   buildReviewSteps,
@@ -97,8 +97,53 @@ function gatherFilesFromStep(steps: ReviewStep[], stepId: string): string[] {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Initialize output channel monitoring for Copilot/Cursor agent capture
-  setupOutputChannelMonitoring();
+  // Register @adv Copilot Chat participant
+  const participant = vscode.chat.createChatParticipant(
+    "adv",
+    async (
+      request: vscode.ChatRequest,
+      _context: vscode.ChatContext,
+      stream: vscode.ChatResponseStream,
+    ) => {
+      if (request.command === "clear") {
+        clearChatIntent();
+        stream.markdown(
+          "Intent cleared. The next `@adv` message will set a new intent.",
+        );
+        return;
+      }
+
+      const prompt = request.prompt.trim();
+
+      if (!prompt) {
+        stream.markdown(
+          "Describe your coding intent and I'll map it against your uncommitted changes.\n\n" +
+            "**Example:** `@adv Refactor auth module to use JWT instead of sessions`\n\n" +
+            "Use `/review` to open the diff review panel immediately after describing your intent.",
+        );
+        return;
+      }
+
+      setChatIntent({
+        prompt,
+        thinking: "(captured via @adv Copilot Chat participant)",
+        source: "Copilot Chat (@adv)",
+        timestamp: new Date().toISOString(),
+      });
+
+      stream.markdown(
+        `**Intent captured:** "${prompt}"\n\n` +
+          "Agent Diff Visualizer will use this to detect drift in your uncommitted changes. " +
+          "Run **ADV: Open Agent Diff Review** or use `/review` to see the analysis.",
+      );
+
+      if (request.command === "review") {
+        await vscode.commands.executeCommand("adv.openReview");
+      }
+    },
+  );
+
+  context.subscriptions.push(participant);
 
   const command = vscode.commands.registerCommand(
     "adv.openReview",
