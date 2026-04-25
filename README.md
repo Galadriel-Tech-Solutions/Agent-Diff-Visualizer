@@ -43,6 +43,8 @@ Contributions, issues, and improvement ideas are welcome.
    - Left: Semantic groups with approve/reject/read buttons
    - Right: Intent mapping, topology map, and reversion timeline
 
+![Example](/resources/example1.png)
+
 ### Configuration
 
 Open VS Code settings and search for `adv.*`:
@@ -82,8 +84,6 @@ Bridging the gap for Copilot Chat and Cursor where structured agent logs are una
 2. Run `npm run watch` (TypeScript compiler in watch mode)
 3. Press `F5` to launch extension dev host
 4. `npm run lint` before commit
-
-![Example](/resources/example1.png)
 
 ## Roadmap
 

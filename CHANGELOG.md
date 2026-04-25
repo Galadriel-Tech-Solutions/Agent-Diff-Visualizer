@@ -1,8 +1,12 @@
 # Changelog
 
+### 0.2.11 - 2026-04-25
+
+- Adjusted showcase image position to README for better visual context
+
 ### 0.2.10 - 2026-04-25
 
-- updated README for command formatting
+- Updated README for command formatting
 
 ### 0.2.9 - 2026-04-25
 
