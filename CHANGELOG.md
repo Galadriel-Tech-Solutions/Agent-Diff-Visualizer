@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 - 2026-04-25
+
+- Reduced Topology Map false positives for multi-project dependency upgrades.
+- Lock/manifest file pairs (such as poetry.lock and pyproject.toml) are now excluded from circular-dependency smell scoring.
+- Replaced broad stem-based mutual-reference detection with stronger path/filename-aware matching.
+- Generic filename stems no longer trigger circular dependency warnings by themselves.
+
 ## 0.2.3 - 2026-04-25
 
 - Added explicit Ollama observability in the review UI.

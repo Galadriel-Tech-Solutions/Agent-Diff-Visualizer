@@ -301,6 +301,70 @@ export function buildSummary(groups: SemanticGroup[]): string {
   );
 }
 
+const LOW_SIGNAL_FILENAMES = new Set([
+  "poetry.lock",
+  "pyproject.toml",
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "pipfile.lock",
+  "cargo.lock",
+  "gemfile.lock",
+  "composer.lock",
+]);
+
+const GENERIC_STEMS = new Set([
+  "poetry",
+  "pyproject",
+  "package",
+  "lock",
+  "config",
+  "project",
+  "workspace",
+]);
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isLowSignalFile(fileName: string): boolean {
+  return LOW_SIGNAL_FILENAMES.has(fileName.toLowerCase());
+}
+
+function getStem(fileName: string): string {
+  const idx = fileName.lastIndexOf(".");
+  return idx > 0
+    ? fileName.slice(0, idx).toLowerCase()
+    : fileName.toLowerCase();
+}
+
+function hasReference(
+  patch: string,
+  targetPath: string,
+  targetName: string,
+): boolean {
+  const patchLower = patch.toLowerCase();
+  const targetPathLower = targetPath.toLowerCase();
+  const targetNameLower = targetName.toLowerCase();
+
+  // Prefer explicit path/file references first.
+  if (
+    patchLower.includes(targetPathLower) ||
+    patchLower.includes(targetNameLower)
+  ) {
+    return true;
+  }
+
+  // Fallback to a stem token match only for non-generic stems.
+  const stem = getStem(targetNameLower);
+  if (stem.length < 5 || GENERIC_STEMS.has(stem)) {
+    return false;
+  }
+
+  const tokenPattern = new RegExp(`\\b${escapeRegex(stem)}\\b`, "i");
+  return tokenPattern.test(patchLower);
+}
+
 export function buildTopologyLinks(groups: SemanticGroup[]): TopologyLink[] {
   const files = groups.flatMap((g) => g.files);
   const scored: Array<TopologyLink & { score: number }> = [];
@@ -314,31 +378,33 @@ export function buildTopologyLinks(groups: SemanticGroup[]): TopologyLink[] {
       const bDir = b.path.split("/").slice(0, -1).join("/");
       const aName = a.path.split("/").at(-1) || a.path;
       const bName = b.path.split("/").at(-1) || b.path;
-      const aStem = aName.split(".")[0];
-      const bStem = bName.split(".")[0];
       const aLower = a.path.toLowerCase();
       const bLower = b.path.toLowerCase();
+      const aLowSignal = isLowSignalFile(aName);
+      const bLowSignal = isLowSignalFile(bName);
+
+      // Skip lock/manifest-to-lock/manifest pairs, which are usually noisy upgrades.
+      if (aLowSignal && bLowSignal) {
+        continue;
+      }
+
+      const aMentionsB = hasReference(a.patch, b.path, bName);
+      const bMentionsA = hasReference(b.patch, a.path, aName);
 
       let score = 0;
       if (aDir && bDir && (aDir.startsWith(bDir) || bDir.startsWith(aDir))) {
         score += 2;
       }
 
-      if (aStem && bStem && (aStem.includes(bStem) || bStem.includes(aStem))) {
-        score += 1;
-      }
-
-      if (a.patch.includes(bName) || a.patch.includes(bStem)) {
+      if (aMentionsB) {
         score += 3;
       }
 
-      if (b.patch.includes(aName) || b.patch.includes(aStem)) {
+      if (bMentionsA) {
         score += 3;
       }
 
-      const mutualReference =
-        (a.patch.includes(bName) || a.patch.includes(bStem)) &&
-        (b.patch.includes(aName) || b.patch.includes(aStem));
+      const mutualReference = aMentionsB && bMentionsA;
       const serviceUiViolation =
         (aLower.includes("service") && /(component|view|ui)/.test(bLower)) ||
         (bLower.includes("service") && /(component|view|ui)/.test(aLower));
