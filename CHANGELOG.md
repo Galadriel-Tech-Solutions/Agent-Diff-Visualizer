@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.14 - 2026-04-25
+
+- Added `@adv <intent>` demo image in readme
+
 ### 0.2.13 - 2026-04-25
 
 - Improved source file matching logic in findCorrespondingSourceFile function

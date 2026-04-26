@@ -71,6 +71,7 @@ ADV scans these paths on startup to extract prompt and thinking for intent drift
 Bridging the gap for Copilot Chat and Cursor where structured agent logs are unavailable.
 
 - Direct Intent Setting: Type `@adv <intent>` in Copilot Chat to manually define your coding mission.
+  ![adv intent](/resources/adv-intent.png)
 
 - Quick Review: Use the `/review` command to launch the visual diff panel instantly after setting your intent.
 
