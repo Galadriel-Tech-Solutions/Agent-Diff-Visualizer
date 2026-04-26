@@ -458,10 +458,11 @@ function findCorrespondingSourceFile(
 ): string | null {
   const testLower = testFile.toLowerCase();
 
-  // Pattern: test/xxx/module_test.py -> xxx/module.py
-  const match1 = testLower.match(/^test[/\\](.+?)_test\.(py|js|ts)$/);
+  // Pattern: test/path/to/test_module.py -> path/to/module.py
+  // Remove 'test/' prefix and 'test_' from filename
+  const match1 = testLower.match(/^test[/\\](.+)[/\\]test_(.+)\.(py|js|ts)$/);
   if (match1) {
-    const source = match1[1] + "." + match1[2];
+    const source = match1[1] + "/" + match1[2] + "." + match1[3];
     if (allFiles.has(source)) return source;
   }
 
@@ -475,13 +476,13 @@ function findCorrespondingSourceFile(
   }
 
   // Pattern: tests/components/xxx_spec.js -> components/xxx.js
-  const match3 = testLower.match(/^tests[/\\](.+?)_spec\.(js|ts)$/);
+  const match3 = testLower.match(/^tests[/\\](.+)_spec\.(js|ts)$/);
   if (match3) {
     const source = match3[1] + "." + match3[2];
     if (allFiles.has(source)) return source;
   }
 
-  // Pattern: test_xxx.py -> xxx.py
+  // Pattern: test_xxx.py -> xxx.py (file-level test prefix)
   const match4 = testLower.match(/^test_(.+)\.(py|js|ts)$/);
   if (match4) {
     const source = match4[1] + "." + match4[2];

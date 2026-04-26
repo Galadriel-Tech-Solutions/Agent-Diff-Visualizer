@@ -2,7 +2,7 @@
   "name": "agent-diff-visualizer",
   "displayName": "Agent Diff Visualizer (ADV) - AI Code Review & Topology Map",
   "description": "Semantic review workspace for large AI-generated git diffs. Audits AI Agent changes (Cursor, Cline, Aider) using local-first LLM analysis & Ollama.",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "publisher": "Galadriel-Tech-Solutions",
   "icon": "resources/icon.png",
   "engines": {

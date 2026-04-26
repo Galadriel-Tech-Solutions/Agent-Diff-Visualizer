@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.13 - 2026-04-25
+
+- Improved source file matching logic in findCorrespondingSourceFile function
+
 ### 0.2.12 - 2026-04-25
 
 - Added functions to identify test files and find corresponding source files to improve file handling in semantic analysis
