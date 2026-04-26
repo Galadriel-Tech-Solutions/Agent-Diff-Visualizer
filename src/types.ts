@@ -6,6 +6,13 @@ export type ChangeSource =
   | "untracked";
 export type LabelSource = "heuristic" | "ollama";
 
+export interface RiskEvidence {
+  flag: string;
+  filePath: string;
+  lineNumber?: number;
+  snippet: string;
+}
+
 export interface DiffFile {
   path: string;
   additions: number;
@@ -24,6 +31,7 @@ export interface SemanticGroup {
   totalAdditions: number;
   totalDeletions: number;
   riskFlags: string[];
+  riskEvidence: RiskEvidence[];
   decision: ReviewDecision;
   labelSource: LabelSource;
 }

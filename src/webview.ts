@@ -15,6 +15,16 @@ function renderGroup(group: SemanticGroup): string {
     ? `<div class="risks">${group.riskFlags.map((r) => `<span class="risk">${escapeHtml(r)}</span>`).join("")}</div>`
     : '<div class="risks"><span class="ok">No risk flags</span></div>';
 
+  const riskEvidenceBlock = group.riskEvidence.length
+    ? `<ul class="risk-evidence">${group.riskEvidence
+        .map((e) => {
+          const lineRef =
+            typeof e.lineNumber === "number" ? `:${e.lineNumber}` : "";
+          return `<li><strong>${escapeHtml(e.flag)}</strong> - <code>${escapeHtml(e.filePath)}${lineRef}</code> - ${escapeHtml(e.snippet)}</li>`;
+        })
+        .join("")}</ul>`
+    : "";
+
   const sourceColors: Record<string, string> = {
     "working-tree": "#fce7e7",
     staged: "#e7f0fc",
@@ -50,6 +60,7 @@ function renderGroup(group: SemanticGroup): string {
       <div class="meta-row">${labelSourceBadge}</div>
       <p class="reason">${escapeHtml(group.reason)}</p>
       ${riskBlock}
+      ${riskEvidenceBlock}
       <ul class="files">${files}</ul>
       <div class="actions">
         <button data-action="approve" data-group-id="${group.id}" ${group.decision === "approved" ? "disabled" : ""}>Approve</button>
@@ -339,6 +350,24 @@ export function buildWebviewHtml(
     }
     .risk { background: #fce7e7; color: var(--danger); }
     .ok { background: #e7f8ef; color: var(--accent); }
+    .risk-evidence {
+      margin: 0 0 10px 0;
+      padding-left: 18px;
+      color: #5d302f;
+    }
+    .risk-evidence li {
+      margin: 4px 0;
+      line-height: 1.35;
+    }
+    .risk-evidence code {
+      font-family: ui-monospace, Menlo, Monaco, "Courier New", monospace;
+      font-size: 12px;
+      background: #f9efef;
+      border: 1px solid #f1d7d7;
+      border-radius: 6px;
+      padding: 1px 5px;
+      color: #7d1e1e;
+    }
     .actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
     button {
       border: 1px solid var(--line);

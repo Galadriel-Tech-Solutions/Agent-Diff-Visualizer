@@ -8,7 +8,7 @@ import {
   SemanticGroup,
   TopologyLink,
 } from "./types";
-import { collectRiskFlags, computeConfidenceScore } from "./riskAnalyzer";
+import { collectRiskSignals, computeConfidenceScore } from "./riskAnalyzer";
 
 interface GroupBucket {
   key: string;
@@ -244,7 +244,7 @@ export async function buildSemanticGroups(
       (sum, f) => sum + f.deletions,
       0,
     );
-    const riskFlags = collectRiskFlags(bucket.files);
+    const riskSignals = collectRiskSignals(bucket.files);
 
     let label = bucket.defaultLabel;
     let labelSource: SemanticGroup["labelSource"] = "heuristic";
@@ -274,7 +274,8 @@ export async function buildSemanticGroups(
       files: bucket.files,
       totalAdditions,
       totalDeletions,
-      riskFlags,
+      riskFlags: riskSignals.flags,
+      riskEvidence: riskSignals.evidence,
       decision: "pending",
       labelSource,
     });

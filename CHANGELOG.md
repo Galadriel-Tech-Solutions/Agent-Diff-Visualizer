@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.15 - 2026-04-25
+
+- Enhanced risk analysis by adding detailed evidence collection and updating interfaces
+
 ### 0.2.14 - 2026-04-25
 
 - Added `@adv <intent>` demo image in readme
