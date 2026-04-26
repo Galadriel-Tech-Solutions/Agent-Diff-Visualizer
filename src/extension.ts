@@ -126,6 +126,10 @@ function gatherFilesFromStep(steps: ReviewStep[], stepId: string): string[] {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  let reviewPanel: vscode.WebviewPanel | undefined;
+  let disposeRefreshInfra: (() => void) | undefined;
+  let refreshOpenReviewPanel: (() => Promise<void>) | undefined;
+
   // Register @adv Copilot Chat participant
   const participant = vscode.chat.createChatParticipant(
     "adv",
@@ -134,7 +138,14 @@ export function activate(context: vscode.ExtensionContext): void {
       _context: vscode.ChatContext,
       stream: vscode.ChatResponseStream,
     ) => {
-      if (request.command === "clear") {
+      const prompt = request.prompt.trim();
+      const normalizedPrompt = prompt.toLowerCase();
+      const isClearCommand =
+        request.command === "clear" || normalizedPrompt === "/clear";
+      const isReviewCommand =
+        request.command === "review" || normalizedPrompt === "/review";
+
+      if (isClearCommand) {
         clearChatIntent();
         stream.markdown(
           "Intent cleared. The next `@adv` message will set a new intent.",
@@ -142,7 +153,11 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      const prompt = request.prompt.trim();
+      if (isReviewCommand) {
+        await vscode.commands.executeCommand("adv.openReview");
+        stream.markdown("Opened Agent Diff Visualizer review panel.");
+        return;
+      }
 
       if (!prompt) {
         stream.markdown(
@@ -160,15 +175,15 @@ export function activate(context: vscode.ExtensionContext): void {
         timestamp: new Date().toISOString(),
       });
 
+      if (refreshOpenReviewPanel) {
+        void refreshOpenReviewPanel();
+      }
+
       stream.markdown(
         `**Intent captured:** "${prompt}"\n\n` +
           "Agent Diff Visualizer will use this to detect drift in your uncommitted changes. " +
           "Run **ADV: Open Agent Diff Review** or use `/review` to see the analysis.",
       );
-
-      if (request.command === "review") {
-        await vscode.commands.executeCommand("adv.openReview");
-      }
     },
   );
 
@@ -187,12 +202,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const workspaceRoot = workspaceFolder.uri.fsPath;
 
+      if (reviewPanel) {
+        reviewPanel.reveal(vscode.ViewColumn.Beside);
+        if (refreshOpenReviewPanel) {
+          await refreshOpenReviewPanel();
+        }
+        return;
+      }
+
       const panel = vscode.window.createWebviewPanel(
         "advReview",
         "Agent Diff Visualizer",
         vscode.ViewColumn.Beside,
         { enableScripts: true, retainContextWhenHidden: true },
       );
+      reviewPanel = panel;
 
       const setLoadingState = (title: string, detail: string): void => {
         panel.webview.html = buildLoadingWebviewHtml(
@@ -227,6 +251,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         panel.webview.html = buildWebviewHtml(panel.webview, currentResult);
       };
+      refreshOpenReviewPanel = refresh;
 
       const watcher = vscode.workspace.createFileSystemWatcher(
         new vscode.RelativePattern(workspaceFolder, "**/*"),
@@ -254,6 +279,12 @@ export function activate(context: vscode.ExtensionContext): void {
         watcher.onDidDelete(refreshDebounced),
         vscode.workspace.onDidSaveTextDocument(refreshDebounced),
       ];
+      disposeRefreshInfra = () => {
+        watcher.dispose();
+        for (const disposable of refreshSubscriptions) {
+          disposable.dispose();
+        }
+      };
 
       panel.webview.onDidReceiveMessage(
         async (message: {
@@ -318,10 +349,10 @@ export function activate(context: vscode.ExtensionContext): void {
       );
 
       panel.onDidDispose(() => {
-        watcher.dispose();
-        for (const disposable of refreshSubscriptions) {
-          disposable.dispose();
-        }
+        disposeRefreshInfra?.();
+        disposeRefreshInfra = undefined;
+        refreshOpenReviewPanel = undefined;
+        reviewPanel = undefined;
       });
     },
   );

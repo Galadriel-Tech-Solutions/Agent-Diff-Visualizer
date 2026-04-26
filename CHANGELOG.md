@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.16 - 2026-04-25
+
+- Enhanced review panel functionality with command handling and state management
+
 ### 0.2.15 - 2026-04-25
 
 - Enhanced risk analysis by adding detailed evidence collection and updating interfaces
